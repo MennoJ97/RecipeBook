@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarif Kutusu · Recipe Box</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#232b1d;
+    --bg-2:#1a2015;
+    --card:#efe3c7;
+    --paper:#fbf6e9;
+    --ink:#2b2416;
+    --muted-ink:#786a4d;
+    --mustard:#d9a441;
+    --mustard-dark:#b9832c;
+    --brick:#b34d3c;
+    --sage:#8fa07e;
+    --clay:#c97b4a;
+    --plum:#b5789a;
+    --grey:#8a8072;
+    --cream:#f1ead6;
+    --line: rgba(43,36,22,0.16);
+    --shadow: 0 10px 26px rgba(0,0,0,0.35);
+    --font-d:'Fraunces',serif;
+    --font-b:'Karla',sans-serif;
+    --font-m:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(217,164,65,0.10), transparent 55%),
+      radial-gradient(ellipse at 100% 110%, rgba(0,0,0,0.35), transparent 60%),
+      var(--bg);
+    min-height:100vh;
+    font-family:var(--font-b);
+    color:var(--cream);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  button, input, select, textarea{ font-family:var(--font-b); }
+  :focus-visible{ outline:2px solid var(--mustard); outline-offset:2px; }
+  .hidden{ display:none !important; }
+
+  .wrap{ max-width:1080px; margin:0 auto; padding:32px 20px 100px; }
+
+  .site-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; margin-bottom:22px; }
+  .eyebrow{ font-family:var(--font-m); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--sage); margin:0 0 6px; }
+  h1{ font-family:var(--font-d); font-weight:600; font-size:clamp(28px,4vw,42px); margin:0 0 6px; line-height:1.05; }
+  h1 .en{ display:block; font-size:0.5em; font-weight:400; font-style:italic; color:var(--sage); margin-top:4px; }
+  .subtitle{ font-size:14px; color:var(--sage); max-width:44ch; margin:0; line-height:1.5; }
+
+  .controls{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .lang-toggle{
+    background:var(--bg-2); color:var(--cream); border:1px solid rgba(241,234,214,0.25);
+    font-family:var(--font-m); font-size:12px; letter-spacing:0.06em; padding:9px 14px;
+    border-radius:20px; cursor:pointer; transition:background .15s, transform .1s;
+  }
+  .lang-toggle:hover{ background:#2c3524; }
+  .lang-toggle:active{ transform:scale(0.96); }
+  .liked-filter{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--cream); cursor:pointer; user-select:none; }
+  .liked-filter input{ accent-color:var(--brick); width:16px; height:16px; cursor:pointer; }
+
+  .import-bar{ display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+  .import-input{
+    flex:1; min-width:220px; background:var(--paper); border:2px solid var(--mustard);
+    color:var(--ink); padding:12px 14px; border-radius:8px; font-size:14.5px;
+  }
+  .import-input::placeholder{ color:var(--muted-ink); }
+  .import-btn{
+    background:var(--mustard); color:var(--ink); border:none; padding:12px 20px; border-radius:8px;
+    font-weight:700; font-size:14px; cursor:pointer; white-space:nowrap;
+  }
+  .import-btn:hover{ background:var(--mustard-dark); }
+  .import-btn:disabled{ opacity:0.6; cursor:wait; }
+  .import-status{ font-size:13px; color:var(--cream); margin:0 0 14px; line-height:1.4; }
+  .import-status.error{ color:#f0a493; }
+  .toolbar{ display:flex; gap:10px; margin:18px 0 22px; flex-wrap:wrap; }
+  .search-input{
+    flex:1; min-width:200px; background:var(--bg-2); border:1px solid rgba(241,234,214,0.2);
+    color:var(--cream); padding:11px 14px; border-radius:8px; font-size:14px;
+  }
+  .search-input::placeholder{ color:#8b8770; }
+  .idea-btn{
+    background:transparent; border:1px solid var(--mustard); color:var(--mustard);
+    padding:11px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+    white-space:nowrap; transition:background .15s, color .15s;
+  }
+  .idea-btn:hover{ background:var(--mustard); color:var(--ink); }
+
+  .idea-callout{
+    background:var(--mustard); color:var(--ink); border-radius:10px; padding:16px 18px;
+    margin-bottom:20px; display:flex; justify-content:space-between; align-items:flex-start; gap:14px;
+    box-shadow:var(--shadow); animation:pop .25s ease;
+  }
+  .idea-callout .idea-label{ font-family:var(--font-m); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; opacity:0.7; margin:0 0 4px; }
+  .idea-callout .idea-title{ font-family:var(--font-d); font-weight:600; font-size:20px; margin:0 0 2px; }
+  .idea-callout .idea-title .en{ display:block; font-size:0.65em; font-style:italic; font-weight:400; opacity:0.75; }
+  .idea-callout .idea-note{ font-size:13px; margin:6px 0 0; max-width:60ch; opacity:0.85; }
+  .idea-callout-actions{ display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  .idea-callout-actions button{
+    background:rgba(43,36,22,0.14); border:none; color:var(--ink); padding:7px 12px;
+    border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;
+  }
+  .idea-callout-actions button:hover{ background:rgba(43,36,22,0.24); }
+
+  .tabs{ display:flex; gap:6px; overflow-x:auto; padding:0 0 0 6px; scrollbar-width:thin; }
+  .tab{
+    background:var(--bg-2); color:var(--sage); font-family:var(--font-m); font-size:12px;
+    letter-spacing:0.05em; text-transform:uppercase; padding:11px 16px 9px; border-radius:9px 9px 0 0;
+    cursor:pointer; border:none; position:relative; top:2px; white-space:nowrap; flex-shrink:0;
+    transition:background .15s, color .15s;
+  }
+  .tab .count{ opacity:0.6; margin-left:5px; }
+  .tab.active{ background:var(--card); color:var(--ink); top:0; font-weight:600; box-shadow:0 -3px 10px rgba(0,0,0,0.2); }
+  .tab.active .count{ opacity:0.5; }
+  .tab[data-cat="dinner"].active{ box-shadow: inset 0 3px 0 var(--mustard), 0 -3px 10px rgba(0,0,0,0.2); }
+  .tab[data-cat="breakfast"].active{ box-shadow: inset 0 3px 0 var(--sage), 0 -3px 10px rgba(0,0,0,0.2); }
+  .tab[data-cat="snack"].active{ box-shadow: inset 0 3px 0 var(--clay), 0 -3px 10px rgba(0,0,0,0.2); }
+  .tab[data-cat="dessert"].active{ box-shadow: inset 0 3px 0 var(--plum), 0 -3px 10px rgba(0,0,0,0.2); }
+  .tab[data-cat="inbox"].active{ box-shadow: inset 0 3px 0 var(--grey), 0 -3px 10px rgba(0,0,0,0.2); }
+
+  .board{
+    background:var(--card); border-radius:0 10px 10px 10px; padding:22px;
+    box-shadow:var(--shadow); min-height:260px;
+  }
+  .inbox-info{
+    font-size:13px; color:var(--muted-ink); background:rgba(43,36,22,0.06);
+    border:1px dashed rgba(43,36,22,0.25); border-radius:8px; padding:12px 14px; margin-bottom:16px; line-height:1.5;
+  }
+  .tag-filter{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .chip{
+    font-family:var(--font-m); font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase;
+    padding:5px 10px; border-radius:20px; border:1px solid rgba(43,36,22,0.2); background:transparent;
+    color:var(--muted-ink); cursor:pointer;
+  }
+  .chip:hover{ background:rgba(43,36,22,0.06); }
+  .chip.active{ background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(250px,1fr)); gap:16px; }
+  .empty-state{ text-align:center; padding:50px 20px; color:var(--muted-ink); }
+  .empty-state p{ margin:0 0 14px; font-size:14px; }
+  .empty-state button{
+    background:var(--mustard); color:var(--ink); border:none; padding:10px 18px;
+    border-radius:8px; font-weight:600; cursor:pointer; font-size:13px;
+  }
+
+  .card{
+    background:var(--paper); border-radius:8px; padding:16px 16px 14px; position:relative;
+    border:1px solid rgba(43,36,22,0.08); transition:transform .15s, box-shadow .15s;
+    display:flex; flex-direction:column;
+  }
+  .card:hover{ transform:translateY(-3px); box-shadow:0 8px 18px rgba(0,0,0,0.18); }
+  .card .accent-bar{ position:absolute; top:0; left:0; right:0; height:4px; border-radius:8px 8px 0 0; }
+  .card[data-cat="dinner"] .accent-bar{ background:var(--mustard); }
+  .card[data-cat="breakfast"] .accent-bar{ background:var(--sage); }
+  .card[data-cat="snack"] .accent-bar{ background:var(--clay); }
+  .card[data-cat="dessert"] .accent-bar{ background:var(--plum); }
+  .card[data-cat="inbox"] .accent-bar{ background:var(--grey); }
+
+  .card-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-top:4px; }
+  .catalog-no{ font-family:var(--font-m); font-size:10px; color:var(--muted-ink); letter-spacing:0.05em; }
+  .like-btn{
+    background:none; border:none; font-size:19px; cursor:pointer; line-height:1; padding:0 0 0 8px;
+    color:#c9bd9a; transition:transform .12s;
+  }
+  .like-btn.liked{ color:var(--brick); }
+  .like-btn.pop{ animation:pop .3s ease; }
+  @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.35);} 100%{transform:scale(1);} }
+
+  .card-title{
+    font-family:var(--font-d); font-weight:600; font-size:17px; color:var(--ink); margin:8px 0 2px; line-height:1.25;
+    border-bottom:1px solid rgba(43,36,22,0.14); padding-bottom:8px; background:none; border-top:none; border-left:none; border-right:none;
+    text-align:left; cursor:pointer; padding-left:0; padding-right:0; width:100%;
+  }
+  .card-title:hover .primary{ text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:3px; }
+  .card-title .secondary{ display:block; font-size:0.72em; font-weight:400; font-style:italic; color:var(--muted-ink); margin-top:2px; }
+  .badge-row{ display:flex; gap:6px; margin:8px 0 0; flex-wrap:wrap; }
+  .badge{ font-family:var(--font-m); font-size:10px; letter-spacing:0.04em; text-transform:uppercase; padding:3px 8px; border-radius:20px; background:rgba(43,36,22,0.08); color:var(--muted-ink); }
+  .badge.formula{ background:rgba(179,120,58,0.18); color:#7a531c; }
+  .badge.has-text{ background:rgba(143,160,126,0.25); color:#4b5a3d; }
+  .card-note{ font-size:12.5px; color:var(--muted-ink); line-height:1.5; margin:10px 0 0; }
+  .card-note .secondary{ display:block; font-style:italic; opacity:0.85; margin-top:3px; }
+  .card-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:12px; gap:8px; }
+  .open-link{ font-size:12px; font-weight:600; color:var(--mustard-dark); text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:none; border:none; cursor:pointer; padding:0; }
+  .open-link:hover{ text-decoration:underline; }
+  .icon-btns{ display:flex; gap:4px; opacity:0; transition:opacity .15s; }
+  .card:hover .icon-btns, .card:focus-within .icon-btns{ opacity:1; }
+  @media (hover:none){ .icon-btns{ opacity:1; } }
+  .icon-btn{ background:none; border:none; cursor:pointer; font-size:13px; color:var(--muted-ink); padding:4px; border-radius:5px; }
+  .icon-btn:hover{ background:rgba(43,36,22,0.08); }
+
+  .fab{
+    position:fixed; right:24px; bottom:24px; background:var(--mustard); color:var(--ink);
+    border:none; padding:14px 22px; border-radius:30px; font-weight:700; font-size:14px;
+    box-shadow:0 8px 22px rgba(0,0,0,0.4); cursor:pointer; transition:transform .12s, background .15s;
+    z-index:20;
+  }
+  .fab:hover{ background:var(--mustard-dark); transform:translateY(-2px); }
+
+  .footer{ margin-top:26px; display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--sage); align-items:center; }
+  .footer a{ color:var(--sage); }
+  .footer a:hover{ color:var(--cream); }
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(20,16,10,0.6); display:flex; align-items:center;
+    justify-content:center; padding:20px; z-index:50;
+  }
+  .modal{
+    background:var(--card); border-radius:12px; padding:26px; width:100%; max-width:560px;
+    max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); color:var(--ink);
+  }
+  .modal.wide{ max-width:720px; }
+  .modal h2{ font-family:var(--font-d); color:var(--ink); font-size:20px; margin:0 0 16px; }
+  .field{ margin-bottom:13px; }
+  .field label, .field .label{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-family:var(--font-m); font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-ink); margin-bottom:5px; }
+  .field input[type=text], .field input[type=url], .field select, .field textarea{
+    width:100%; padding:9px 11px; border:1px solid rgba(43,36,22,0.25); border-radius:6px;
+    font-size:13.5px; background:var(--paper); color:var(--ink); resize:vertical;
+  }
+  .field textarea{ min-height:56px; }
+  .field textarea.recipe-text{ min-height:150px; font-size:13px; line-height:1.45; }
+  .field-row{ display:flex; gap:10px; }
+  .field-row .field{ flex:1; min-width:0; }
+  .field-hint{ font-size:11.5px; color:var(--muted-ink); margin-top:4px; line-height:1.4; }
+  .mini-btn{
+    font-family:var(--font-b); text-transform:none; letter-spacing:0; font-size:11.5px; font-weight:600;
+    background:rgba(43,36,22,0.08); border:none; color:var(--ink); padding:4px 9px; border-radius:5px; cursor:pointer; white-space:nowrap;
+  }
+  .mini-btn:hover{ background:rgba(43,36,22,0.16); }
+  .mini-btn:disabled{ opacity:0.5; cursor:wait; }
+  .checkbox-field{ display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+  .checkbox-field input{ width:16px; height:16px; }
+  .checkbox-field label{ margin:0; text-transform:none; letter-spacing:0; font-size:13px; font-family:var(--font-b); color:var(--ink); }
+  .modal-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:8px; flex-wrap:wrap; }
+  .btn-primary{ background:var(--mustard); color:var(--ink); border:none; padding:10px 20px; border-radius:8px; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .btn-primary:hover{ background:var(--mustard-dark); }
+  .btn-secondary{ background:none; border:1px solid rgba(43,36,22,0.25); color:var(--ink); padding:10px 16px; border-radius:8px; font-size:13.5px; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn-secondary:hover{ background:rgba(43,36,22,0.06); }
+  .btn-danger{ background:none; border:none; color:var(--brick); font-size:12.5px; cursor:pointer; text-decoration:underline; }
+
+  /* recipe detail */
+  .detail-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .detail-title{ font-family:var(--font-d); font-weight:600; font-size:24px; margin:0; line-height:1.2; }
+  .detail-title .secondary{ display:block; font-size:0.62em; font-weight:400; font-style:italic; color:var(--muted-ink); margin-top:4px; }
+  .detail-head .like-btn{ font-size:26px; }
+  .detail-note{ font-size:13.5px; color:var(--muted-ink); line-height:1.5; margin:12px 0 0; }
+  .seg{ display:inline-flex; border:1px solid rgba(43,36,22,0.25); border-radius:20px; overflow:hidden; margin:18px 0 10px; }
+  .seg button{ background:none; border:none; padding:6px 13px; font-family:var(--font-m); font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-ink); cursor:pointer; }
+  .seg button + button{ border-left:1px solid rgba(43,36,22,0.2); }
+  .seg button.active{ background:var(--ink); color:var(--cream); }
+  .recipe-body{
+    background:var(--paper); border-radius:8px; padding:16px 18px; font-size:14px; line-height:1.6;
+    white-space:pre-wrap; word-wrap:break-word; border:1px solid rgba(43,36,22,0.08);
+  }
+  .recipe-body.empty{ color:var(--muted-ink); font-style:italic; white-space:normal; }
+  .translate-row{ display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; font-size:12px; color:var(--muted-ink); }
+  .embed-wrap{ margin-top:14px; border-radius:8px; overflow:hidden; background:#fff; }
+  .embed-wrap iframe{ width:100%; height:620px; border:0; display:block; }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink);
+    color:var(--cream); padding:10px 18px; border-radius:20px; font-size:13px; z-index:60;
+    box-shadow:0 8px 20px rgba(0,0,0,0.4); max-width:90vw; text-align:center;
+  }
+
+  @media (max-width:640px){
+    .wrap{ padding:24px 16px 100px; }
+    .site-header{ flex-direction:column; }
+    .board{ padding:16px; }
+    .tag-filter{ flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin; }
+    .chip{ flex-shrink:0; }
+    .fab{ right:16px; bottom:16px; padding:12px 18px; font-size:13px; }
+    .field-row{ flex-direction:column; gap:0; }
+    .modal{ padding:20px 16px; }
+    .modal-overlay{ padding:10px; }
+    .embed-wrap iframe{ height:520px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Tarif Kutusu · Recipe Box</p>
+      <h1 id="pageTitle"><span class="tr">Mutfak Arşivi</span></h1>
+      <p class="subtitle" id="pageSubtitle"></p>
+    </div>
+    <div class="controls">
+      <label class="liked-filter"><input type="checkbox" id="likedOnly"> <span id="likedOnlyLabel"></span></label>
+      <button class="lang-toggle" id="langToggle">TR / EN</button>
+    </div>
+  </header>
+
+  <form class="import-bar" id="importForm">
+    <input type="url" class="import-input" id="importInput" inputmode="url" autocomplete="off" required>
+    <button type="submit" class="import-btn" id="importSubmit"></button>
+  </form>
+  <p class="import-status hidden" id="importStatus"></p>
+
+  <div class="toolbar">
+    <input type="text" class="search-input" id="searchInput">
+    <button class="idea-btn" id="ideaBtn"></button>
+  </div>
+
+  <div id="ideaCalloutSlot"></div>
+
+  <nav class="tabs" id="tabs"></nav>
+  <div class="board">
+    <div id="inboxInfoSlot"></div>
+    <div class="tag-filter" id="tagFilter"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="footer">
+    <span id="aiNote"></span>
+    <a href="/api/export" id="exportBtn"></a>
+  </div>
+
+</div>
+
+<button class="fab" id="addBtn">✎ <span id="addBtnLabel"></span></button>
+
+<!-- recipe detail -->
+<div class="modal-overlay hidden" id="detailOverlay">
+  <div class="modal wide" id="detailModal" role="dialog" aria-modal="true"></div>
+</div>
+
+<!-- add / edit -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <form class="modal wide" id="recipeForm">
+    <h2 id="modalTitle"></h2>
+
+    <div class="field">
+      <label for="fLink" id="lblLink"></label>
+      <input type="url" id="fLink" placeholder="https://www.instagram.com/reel/...">
+      <div class="field-hint" id="linkHint"></div>
+      <div style="margin-top:6px;"><button type="button" class="mini-btn" id="previewPostBtn"></button></div>
+      <div class="embed-wrap hidden" id="formEmbed"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="fTitleTr" id="lblTitleTr"></label>
+        <input type="text" id="fTitleTr">
+      </div>
+      <div class="field">
+        <label for="fTitleEn" id="lblTitleEn"></label>
+        <input type="text" id="fTitleEn">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="fCategory" id="lblCategory"></label>
+        <select id="fCategory"></select>
+      </div>
+      <div class="field">
+        <label for="fTags" id="lblTags"></label>
+        <input type="text" id="fTags">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fCaption"><span id="lblCaption"></span><button type="button" class="mini-btn" id="captionToBothBtn"></button></label>
+      <textarea id="fCaption" class="recipe-text" style="min-height:90px;"></textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="fTextTr"><span id="lblTextTr"></span><button type="button" class="mini-btn" id="trFromEnBtn"></button></label>
+        <textarea id="fTextTr" class="recipe-text"></textarea>
+      </div>
+      <div class="field">
+        <label for="fTextEn"><span id="lblTextEn"></span><button type="button" class="mini-btn" id="enFromTrBtn"></button></label>
+        <textarea id="fTextEn" class="recipe-text"></textarea>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="fNoteTr" id="lblNoteTr"></label>
+        <textarea id="fNoteTr"></textarea>
+      </div>
+      <div class="field">
+        <label for="fNoteEn" id="lblNoteEn"></label>
+        <textarea id="fNoteEn"></textarea>
+      </div>
+    </div>
+
+    <div class="checkbox-field">
+      <input type="checkbox" id="fFormula">
+      <label id="lblFormula" for="fFormula"></label>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-danger hidden" id="deleteBtn"></button>
+      <div style="display:flex; gap:8px; margin-left:auto;">
+        <button type="button" class="btn-secondary" id="cancelBtn"></button>
+        <button type="submit" class="btn-primary" id="saveBtn"></button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+(function(){
+
+  var LANG_KEY = 'recipebook-lang';
+
+  var CATEGORIES = [
+    { id:'dinner',    tr:'Öğle & Akşam Yemeği', en:'Lunch & Dinner' },
+    { id:'breakfast', tr:'Kahvaltı',            en:'Breakfast' },
+    { id:'snack',     tr:'Ara Öğün',            en:'Snacks' },
+    { id:'dessert',   tr:'Tatlı',               en:'Dessert' },
+    { id:'inbox',     tr:'Gelen Kutusu',        en:'Inbox' }
+  ];
+
+  var TAGS = {
+    'soup':{tr:'Çorba',en:'Soup'}, 'salad':{tr:'Salata',en:'Salad'}, 'main':{tr:'Ana yemek',en:'Main'},
+    'side':{tr:'Yan lezzet',en:'Side'}, 'vegetarian':{tr:'Vejetaryen',en:'Vegetarian'}, 'vegan':{tr:'Vegan',en:'Vegan'},
+    'meat':{tr:'Etli',en:'Meat'}, 'chicken':{tr:'Tavuk',en:'Chicken'}, 'fish':{tr:'Balık',en:'Fish'},
+    'legumes':{tr:'Baklagil',en:'Legumes'}, 'pastry':{tr:'Hamur işi',en:'Pastry'}, 'rice-grain':{tr:'Pilav & tahıl',en:'Rice & grains'},
+    'pasta':{tr:'Makarna',en:'Pasta'}, 'olive-oil':{tr:'Zeytinyağlı',en:'Olive-oil dish'}, 'quick':{tr:'Pratik',en:'Quick'},
+    'oven':{tr:'Fırında',en:'Oven-baked'}, 'no-cook':{tr:'Pişirmesiz',en:'No-cook'}, 'healthy':{tr:'Sağlıklı',en:'Healthy'}
+  };
+
+  var I18N = {
+    tr:{
+      titleMain:'Mutfak Arşivi', titleSub:'Kitchen Archive',
+      subtitle:'Kaydettiğin tarifleri topla, favorilerini işaretle, ne pişireceğine kolayca karar ver.',
+      searchPlaceholder:'Tarif veya malzeme ara...',
+      likedOnly:'Sadece favoriler',
+      idea:'Bugün ne pişirsem?',
+      ideaAgain:'Başka fikir',
+      ideaDismiss:'Kapat',
+      ideaLabel:'Fikir',
+      ideaShow:'Tarifi gör',
+      addRecipe:'Tarif Ekle', addByHand:'Elle ekle',
+      editRecipe:'Tarifi Düzenle',
+      edit:'Düzenle',
+      open:'Instagram’da aç',
+      showRecipe:'Tarifi gör',
+      save:'Kaydet',
+      cancel:'Vazgeç',
+      close:'Kapat',
+      delete:'Sil',
+      deleteConfirm:'Bu kaydı silmek istediğine emin misin?',
+      emptyMsg:'Bu kategoride henüz tarif yok. Aşağıdan ekleyebilirsin.',
+      emptyBtn:'İlk tarifi ekle',
+      emptyLiked:'Favori işaretlediğin tarif yok.',
+      inboxInfo:'Henüz dosyalanmamış tarifler. Bir karta tıkla, tarifi kontrol et, sonra Düzenle ile başlığını ve kategorisini seç. Açıklaması okunamayan gönderilerde "Gönderiyi göster" ile metni kopyalayıp "Orijinal açıklama" alanına yapıştırabilirsin.',
+      allTags:'Tümü',
+      lblTitleTr:'Başlık (TR)', lblTitleEn:'Başlık (EN)', lblCategory:'Kategori', lblTags:'Etiketler',
+      lblNoteTr:'Not (TR)', lblNoteEn:'Not (EN)', lblLink:'Instagram / kaynak bağlantı',
+      linkHint:'Bağlantıyı yapıştır, "Gönderiyi göster"e bas, açıklamadaki tarifi kopyalayıp aşağıya yapıştır.',
+      previewPost:'Gönderiyi göster', hidePost:'Gönderiyi gizle',
+      lblCaption:'Orijinal açıklama (Instagram’dan yapıştır)', captionToBoth:'TR + EN’ye aktar',
+      lblTextTr:'Tarif (TR)', lblTextEn:'Tarif (EN)', trFromEn:'EN’den çevir', enFromTr:'TR’den çevir',
+      lblFormula:'Bu sabit bir tarif değil, esnek bir menü formülü',
+      tagsHint:'virgülle ayır',
+      untitled:'Başlıksız kayıt', formula:'Formül', recipe:'Tarif', hasText:'Tarif var',
+      original:'Orijinal',
+      noText:'Bu dilde tarif metni yok.',
+      noTextAtAll:'Henüz tarif metni yok. Düzenle’ye basıp Instagram açıklamasını yapıştırabilirsin.',
+      translateNow:'Otomatik çevir',
+      translating:'Çevriliyor…',
+      translateFailed:'Otomatik çeviri yapılamadı; Google Çeviri yeni sekmede açılıyor.',
+      machineNote:'Otomatik çeviri',
+      toastSaved:'Kaydedildi', toastDeleted:'Silindi', toastLiked:'Favorilere eklendi', toastUnliked:'Favorilerden çıkarıldı',
+      toastTranslated:'Çevrildi',
+      validationTitle:'Lütfen en az bir dilde başlık gir.',
+      exportBtn:'Yedeği indir (JSON)',
+      aiOn:'Claude tarifleri düzenleyip çeviriyor.',
+      aiOff:'Basit içe aktarma: açıklama çevrilir, başlık ve kategoriyi sen seçersin.',
+      importPlaceholder:'Instagram, TikTok, YouTube ya da tarif sitesi bağlantısı yapıştır…',
+      importBtn:'Tarifi ekle', importing:'Ekleniyor…',
+      importWorking:'Bağlantı okunuyor ve tarif hazırlanıyor, bu biraz sürebilir…',
+      importDone:'Tarif eklendi', importInbox:'Tarif Gelen Kutusu’na eklendi; başlığını ve kategorisini kontrol et.',
+      importDuplicate:'Bu tarif zaten arşivde.',
+      saveFailed:'Kaydedilemedi:'
+    },
+    en:{
+      titleMain:'Kitchen Archive', titleSub:'Mutfak Arşivi',
+      subtitle:'Collect the recipes you save, mark your favorites, and always know what to cook.',
+      searchPlaceholder:'Search recipes or ingredients...',
+      likedOnly:'Favorites only',
+      idea:'What should I cook?',
+      ideaAgain:'Another idea',
+      ideaDismiss:'Dismiss',
+      ideaLabel:'Idea',
+      ideaShow:'Show recipe',
+      addRecipe:'Add recipe', addByHand:'Add by hand',
+      editRecipe:'Edit recipe',
+      edit:'Edit',
+      open:'Open on Instagram',
+      showRecipe:'Show recipe',
+      save:'Save',
+      cancel:'Cancel',
+      close:'Close',
+      delete:'Delete',
+      deleteConfirm:'Delete this entry?',
+      emptyMsg:'No recipes here yet. Add one below.',
+      emptyBtn:'Add first recipe',
+      emptyLiked:'No favorites marked yet.',
+      inboxInfo:'Recipes that have not been filed yet. Open a card, check the recipe, then use Edit to pick a title and category. For posts whose caption could not be read, use "Show post", copy the text and paste it into "Original caption".',
+      allTags:'All',
+      lblTitleTr:'Title (TR)', lblTitleEn:'Title (EN)', lblCategory:'Category', lblTags:'Tags',
+      lblNoteTr:'Note (TR)', lblNoteEn:'Note (EN)', lblLink:'Instagram / source link',
+      linkHint:'Paste the link, press "Show post", then copy the recipe from the caption into the box below.',
+      previewPost:'Show post', hidePost:'Hide post',
+      lblCaption:'Original caption (paste from Instagram)', captionToBoth:'Copy to TR + EN',
+      lblTextTr:'Recipe (TR)', lblTextEn:'Recipe (EN)', trFromEn:'Translate from EN', enFromTr:'Translate from TR',
+      lblFormula:'This is a flexible formula, not a fixed recipe',
+      tagsHint:'comma separated',
+      untitled:'Untitled entry', formula:'Formula', recipe:'Recipe', hasText:'Has recipe',
+      original:'Original',
+      noText:'No recipe text in this language yet.',
+      noTextAtAll:'No recipe text yet. Press Edit and paste the Instagram caption.',
+      translateNow:'Translate automatically',
+      translating:'Translating…',
+      translateFailed:'Automatic translation failed; opening Google Translate in a new tab.',
+      machineNote:'Machine translation',
+      toastSaved:'Saved', toastDeleted:'Deleted', toastLiked:'Added to favorites', toastUnliked:'Removed from favorites',
+      toastTranslated:'Translated',
+      validationTitle:'Please enter a title in at least one language.',
+      exportBtn:'Download backup (JSON)',
+      aiOn:'Claude cleans up and translates imported recipes.',
+      aiOff:'Basic import: the caption gets translated, you pick the title and category.',
+      importPlaceholder:'Paste an Instagram, TikTok, YouTube or recipe website link…',
+      importBtn:'Add recipe', importing:'Adding…',
+      importWorking:'Reading the link and preparing the recipe, this can take a moment…',
+      importDone:'Recipe added', importInbox:'Recipe added to the Inbox; check its title and category.',
+      importDuplicate:'This recipe is already in the archive.',
+      saveFailed:'Could not save:'
+    }
+  };
+
+  function t(key){ return I18N[state.lang][key]; }
+  function other(lang){ return lang === 'tr' ? 'en' : 'tr'; }
+  function cap(lang){ return lang === 'tr' ? 'Tr' : 'En'; }
+
+  function catLabel(cat){
+    var c = CATEGORIES.filter(function(x){return x.id===cat;})[0];
+    return c ? c[state.lang] : cat;
+  }
+  function tagLabel(tag){ return TAGS[tag] ? TAGS[tag][state.lang] : tag; }
+
+  function esc(s){
+    if(!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function igCode(link){
+    var m = /instagram\.com\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/([\w-]+)/.exec(link || '');
+    return m ? m[1] : null;
+  }
+
+  /* ---------- server API ---------- */
+
+  async function api(method, path, body){
+    var res = await fetch(path, {
+      method:method,
+      headers: body ? { 'Content-Type':'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined
+    });
+    var data = {};
+    try{ data = await res.json(); }catch(e){}
+    if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+
+  async function loadData(){
+    var data = await api('GET', '/api/recipes');
+    state.recipes = data.recipes;
+    state.ai = !!data.ai;
+  }
+
+  // Save the given fields of a recipe and replace the local copy with the server's.
+  async function saveRecipe(r, fields){
+    try{
+      var data = await api('PUT', '/api/recipes/' + encodeURIComponent(r.id), fields);
+      Object.assign(r, data.recipe);
+      return true;
+    }catch(e){
+      showToast(t('saveFailed') + ' ' + e.message);
+      return false;
+    }
+  }
+
+  function saveLang(){
+    try{ localStorage.setItem(LANG_KEY, state.lang); }catch(e){}
+  }
+
+  /* ---------- translation (done by the server) ---------- */
+
+  async function translate(text, from, to){
+    if(!text || !text.trim()) return '';
+    try{
+      var data = await api('POST', '/api/translate', { text:text, from:from, to:to });
+      return data.text;
+    }catch(e){
+      showToast(t('translateFailed'));
+      window.open('https://translate.google.com/?sl=' + (from === 'auto' ? 'auto' : from) + '&tl=' + to + '&op=translate&text=' + encodeURIComponent(text.slice(0, 4500)), '_blank', 'noopener');
+      return null;
+    }
+  }
+  function guessLang(text){
+    if(/[çğıöşüÇĞİÖŞÜ]/.test(text)) return 'tr';
+    var tr = (text.match(/\b(ve|bir|için|ile|kadar|olarak|tuz|su bardağı|yemek kaşığı)\b/gi) || []).length;
+    var en = (text.match(/\b(and|the|with|for|cup|tbsp|tsp|until|minutes)\b/gi) || []).length;
+    if(tr === 0 && en === 0) return 'auto';
+    return tr >= en ? 'tr' : 'en';
+  }
+
+  /* ---------- state & helpers ---------- */
+
+  var state = { lang:'tr', likedOnly:false, search:'', activeCategory:'dinner', activeTag:null, recipes:[], ai:false, editingId:null };
+  var currentIdeaId = null;
+  var detailId = null, detailView = null;
+
+  function showToast(msg){
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ el.classList.add('hidden'); }, 2200);
+  }
+
+  function getRecipe(id){ return state.recipes.filter(function(r){return r.id===id;})[0]; }
+
+  function titles(r){
+    var primary = state.lang==='tr' ? r.titleTr : r.titleEn;
+    var secondary = state.lang==='tr' ? r.titleEn : r.titleTr;
+    if(!primary && secondary){ primary = secondary; secondary=''; }
+    if(!primary){ primary = igCode(r.link) ? '📎 ' + igCode(r.link) : t('untitled'); }
+    return { primary:primary, secondary:secondary };
+  }
+
+  function haystack(r){
+    return [r.titleTr, r.titleEn, r.noteTr, r.noteEn, r.textTr, r.textEn, r.caption, r.author,
+      (r.tags||[]).map(function(x){ return TAGS[x] ? TAGS[x].tr + ' ' + TAGS[x].en : x; }).join(' ')
+    ].join(' ').toLocaleLowerCase('tr');
+  }
+
+  function filteredRecipes(){
+    var q = state.search.trim().toLocaleLowerCase('tr');
+    return state.recipes.filter(function(r){
+      if(r.category !== state.activeCategory) return false;
+      if(state.likedOnly && !r.liked) return false;
+      if(state.activeTag && (r.tags||[]).indexOf(state.activeTag) === -1) return false;
+      if(q && haystack(r).indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  /* ---------- rendering ---------- */
+
+  function renderChrome(){
+    document.documentElement.lang = state.lang;
+    document.getElementById('pageTitle').innerHTML =
+      '<span>' + esc(t('titleMain')) + '</span><span class="en">' + esc(t('titleSub')) + '</span>';
+    document.getElementById('pageSubtitle').textContent = t('subtitle');
+    document.getElementById('searchInput').placeholder = t('searchPlaceholder');
+    document.getElementById('likedOnlyLabel').textContent = '♥ ' + t('likedOnly');
+    document.getElementById('ideaBtn').textContent = '🎲 ' + t('idea');
+    document.getElementById('addBtnLabel').textContent = t('addByHand');
+    ['lblTitleTr','lblTitleEn','lblCategory','lblNoteTr','lblNoteEn','lblLink','lblFormula','lblCaption','lblTextTr','lblTextEn','linkHint'].forEach(function(id){
+      document.getElementById(id).textContent = t(id);
+    });
+    document.getElementById('lblTags').textContent = t('lblTags') + ' (' + t('tagsHint') + ')';
+    document.getElementById('captionToBothBtn').textContent = '↧ ' + t('captionToBoth');
+    document.getElementById('trFromEnBtn').textContent = '⇄ ' + t('trFromEn');
+    document.getElementById('enFromTrBtn').textContent = '⇄ ' + t('enFromTr');
+    document.getElementById('cancelBtn').textContent = t('cancel');
+    document.getElementById('saveBtn').textContent = t('save');
+    document.getElementById('deleteBtn').textContent = t('delete');
+    document.getElementById('exportBtn').textContent = t('exportBtn');
+    document.getElementById('aiNote').textContent = state.ai ? t('aiOn') : t('aiOff');
+    document.getElementById('importInput').placeholder = t('importPlaceholder');
+    if(!importBusy) document.getElementById('importSubmit').textContent = '+ ' + t('importBtn');
+    var embedShown = !document.getElementById('formEmbed').classList.contains('hidden');
+    document.getElementById('previewPostBtn').textContent = '▶ ' + t(embedShown ? 'hidePost' : 'previewPost');
+
+    var sel = document.getElementById('fCategory');
+    var current = sel.value;
+    sel.innerHTML = '';
+    CATEGORIES.forEach(function(c){
+      var opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c[state.lang];
+      sel.appendChild(opt);
+    });
+    if(current) sel.value = current;
+
+    var infoSlot = document.getElementById('inboxInfoSlot');
+    infoSlot.innerHTML = state.activeCategory === 'inbox' ? '<div class="inbox-info">' + esc(t('inboxInfo')) + '</div>' : '';
+  }
+
+  function renderTabs(){
+    var tabsEl = document.getElementById('tabs');
+    tabsEl.innerHTML = '';
+    CATEGORIES.forEach(function(c){
+      var count = state.recipes.filter(function(r){ return r.category===c.id; }).length;
+      if(c.id === 'inbox' && count === 0 && state.activeCategory !== 'inbox') return;
+      var btn = document.createElement('button');
+      btn.className = 'tab' + (c.id===state.activeCategory ? ' active' : '');
+      btn.setAttribute('data-cat', c.id);
+      btn.innerHTML = esc(c[state.lang]) + '<span class="count">' + count + '</span>';
+      btn.addEventListener('click', function(){
+        state.activeCategory = c.id;
+        state.activeTag = null;
+        currentIdeaId = null;
+        document.getElementById('ideaCalloutSlot').innerHTML = '';
+        renderAll();
+      });
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  function renderTagFilter(){
+    var el = document.getElementById('tagFilter');
+    var counts = {};
+    state.recipes.forEach(function(r){
+      if(r.category !== state.activeCategory) return;
+      (r.tags||[]).forEach(function(tag){ counts[tag] = (counts[tag]||0) + 1; });
+    });
+    var tags = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+    if(tags.length < 2){ el.innerHTML = ''; el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    var html = '<button class="chip' + (state.activeTag ? '' : ' active') + '" data-tag="">' + esc(t('allTags')) + '</button>';
+    tags.forEach(function(tag){
+      html += '<button class="chip' + (state.activeTag===tag ? ' active' : '') + '" data-tag="' + esc(tag) + '">' + esc(tagLabel(tag)) + ' <span style="opacity:.6">' + counts[tag] + '</span></button>';
+    });
+    el.innerHTML = html;
+    el.querySelectorAll('.chip').forEach(function(b){
+      b.addEventListener('click', function(){
+        state.activeTag = b.getAttribute('data-tag') || null;
+        renderTagFilter(); renderGrid();
+      });
+    });
+  }
+
+  function cardHtml(r, idx){
+    var tt = titles(r);
+    var primaryNote = state.lang==='tr' ? r.noteTr : r.noteEn;
+    var secondaryNote = state.lang==='tr' ? r.noteEn : r.noteTr;
+    var hasText = !!(r.textTr || r.textEn || r.caption);
+
+    var html = '<div class="card" data-cat="' + esc(r.category) + '" data-id="' + esc(r.id) + '">';
+    html += '<div class="accent-bar"></div>';
+    html += '<div class="card-top"><span class="catalog-no">No. ' + String(idx+1).padStart(3,'0') + '</span>';
+    html += '<button class="like-btn' + (r.liked?' liked':'') + '" data-id="' + esc(r.id) + '" aria-label="like">' + (r.liked ? '♥' : '♡') + '</button></div>';
+    html += '<button class="card-title open-detail" data-id="' + esc(r.id) + '"><span class="primary">' + esc(tt.primary) + '</span>' + (tt.secondary ? '<span class="secondary">'+esc(tt.secondary)+'</span>' : '') + '</button>';
+    var badges = '';
+    if(r.formula) badges += '<span class="badge formula">' + esc(t('formula')) + '</span>';
+    if(hasText) badges += '<span class="badge has-text">📄 ' + esc(t('hasText')) + '</span>';
+    (r.tags||[]).slice(0,3).forEach(function(tag){ badges += '<span class="badge">' + esc(tagLabel(tag)) + '</span>'; });
+    if(badges) html += '<div class="badge-row">' + badges + '</div>';
+    if(primaryNote || secondaryNote){
+      html += '<div class="card-note">' + esc(primaryNote||'') + (secondaryNote && primaryNote ? '<span class="secondary">'+esc(secondaryNote)+'</span>' : esc(primaryNote ? '' : secondaryNote)) + '</div>';
+    }
+    html += '<div class="card-actions">';
+    html += '<button class="open-link open-detail" data-id="' + esc(r.id) + '">' + esc(t('showRecipe')) + ' →</button>';
+    html += '<div class="icon-btns">';
+    if(r.link) html += '<a class="icon-btn" href="'+esc(r.link)+'" target="_blank" rel="noopener" aria-label="' + esc(t('open')) + '" title="' + esc(t('open')) + '">↗</a>';
+    html += '<button class="icon-btn edit-btn" data-id="'+esc(r.id)+'" aria-label="edit">✎</button><button class="icon-btn del-btn" data-id="'+esc(r.id)+'" aria-label="delete">🗑</button></div>';
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderGrid(){
+    var grid = document.getElementById('grid');
+    var list = filteredRecipes();
+    if(list.length === 0){
+      var msg = state.likedOnly ? t('emptyLiked') : t('emptyMsg');
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>' + esc(msg) + '</p>' +
+        (state.likedOnly || state.activeCategory==='inbox' ? '' : '<button id="emptyAddBtn">' + esc(t('emptyBtn')) + '</button>') + '</div>';
+      var eb = document.getElementById('emptyAddBtn');
+      if(eb) eb.addEventListener('click', function(){ openModal(null); });
+      return;
+    }
+    grid.innerHTML = list.map(function(r,i){ return cardHtml(r,i); }).join('');
+    grid.querySelectorAll('.like-btn').forEach(function(b){
+      b.addEventListener('click', function(){ toggleLike(b.getAttribute('data-id'), b); });
+    });
+    grid.querySelectorAll('.open-detail').forEach(function(b){
+      b.addEventListener('click', function(){ openDetail(b.getAttribute('data-id')); });
+    });
+    grid.querySelectorAll('.edit-btn').forEach(function(b){
+      b.addEventListener('click', function(){ openModal(getRecipe(b.getAttribute('data-id'))); });
+    });
+    grid.querySelectorAll('.del-btn').forEach(function(b){
+      b.addEventListener('click', function(){
+        if(confirm(t('deleteConfirm'))){ removeRecipe(b.getAttribute('data-id')); }
+      });
+    });
+  }
+
+  function renderAll(){
+    renderChrome(); renderTabs(); renderTagFilter(); renderGrid();
+  }
+
+  /* ---------- recipe detail ---------- */
+
+  function embedHtml(link){
+    var code = igCode(link);
+    if(!code) return '';
+    return '<iframe src="https://www.instagram.com/p/' + esc(code) + '/embed/captioned/" loading="lazy" allowtransparency="true" title="Instagram"></iframe>';
+  }
+
+  function openDetail(id){
+    var r = getRecipe(id);
+    if(!r) return;
+    detailId = id;
+    detailView = state.lang;
+    if(!r['text' + cap(detailView)] && !r['text' + cap(other(detailView))] && r.caption) detailView = 'orig';
+    renderDetail();
+    document.getElementById('detailOverlay').classList.remove('hidden');
+  }
+
+  function closeDetail(){
+    document.getElementById('detailOverlay').classList.add('hidden');
+    document.getElementById('detailModal').innerHTML = '';
+    detailId = null;
+  }
+
+  function renderDetail(){
+    var r = getRecipe(detailId);
+    if(!r){ closeDetail(); return; }
+    var tt = titles(r);
+    var note = state.lang==='tr' ? (r.noteTr || r.noteEn) : (r.noteEn || r.noteTr);
+    var text = detailView === 'orig' ? r.caption : r['text' + cap(detailView)];
+
+    var html = '<div class="detail-head"><div>';
+    html += '<p class="eyebrow" style="color:var(--muted-ink)">' + esc(catLabel(r.category)) + (r.author ? ' · @' + esc(r.author) : '') + '</p>';
+    html += '<h2 class="detail-title">' + esc(tt.primary) + (tt.secondary ? '<span class="secondary">' + esc(tt.secondary) + '</span>' : '') + '</h2>';
+    html += '</div><button class="like-btn' + (r.liked?' liked':'') + '" id="detailLike" aria-label="like">' + (r.liked ? '♥' : '♡') + '</button></div>';
+
+    var badges = '';
+    if(r.formula) badges += '<span class="badge formula">' + esc(t('formula')) + '</span>';
+    (r.tags||[]).forEach(function(tag){ badges += '<span class="badge">' + esc(tagLabel(tag)) + '</span>'; });
+    if(badges) html += '<div class="badge-row">' + badges + '</div>';
+    if(note) html += '<p class="detail-note">' + esc(note) + '</p>';
+
+    var anyText = r.textTr || r.textEn || r.caption;
+    if(anyText){
+      html += '<div class="seg" role="tablist">';
+      html += '<button data-view="tr" class="' + (detailView==='tr'?'active':'') + '">Türkçe</button>';
+      html += '<button data-view="en" class="' + (detailView==='en'?'active':'') + '">English</button>';
+      if(r.caption) html += '<button data-view="orig" class="' + (detailView==='orig'?'active':'') + '">' + esc(t('original')) + '</button>';
+      html += '</div>';
+      if(text){
+        html += '<div class="recipe-body">' + esc(text) + '</div>';
+      } else {
+        html += '<div class="recipe-body empty">' + esc(t('noText')) + '</div>';
+        html += '<div class="translate-row"><button class="mini-btn" id="detailTranslate">⇄ ' + esc(t('translateNow')) + '</button></div>';
+      }
+      if(r.machine && r.machine[detailView]) html += '<div class="translate-row">⚙ ' + esc(t('machineNote')) + '</div>';
+    } else {
+      html += '<div class="recipe-body empty" style="margin-top:16px;">' + esc(t('noTextAtAll')) + '</div>';
+    }
+
+    html += '<div class="embed-wrap hidden" id="detailEmbed"></div>';
+
+    html += '<div class="modal-actions">';
+    html += '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
+    if(r.link){
+      if(igCode(r.link)) html += '<button class="btn-secondary" id="detailEmbedBtn">▶ ' + esc(t('previewPost')) + '</button>';
+      html += '<a class="btn-secondary" href="' + esc(r.link) + '" target="_blank" rel="noopener">' + esc(t('open')) + ' ↗</a>';
+    }
+    html += '</div><div style="display:flex; gap:8px; margin-left:auto;">';
+    html += '<button class="btn-secondary" id="detailEdit">✎ ' + esc(t('edit')) + '</button>';
+    html += '<button class="btn-primary" id="detailClose">' + esc(t('close')) + '</button>';
+    html += '</div></div>';
+
+    var modal = document.getElementById('detailModal');
+    modal.innerHTML = html;
+
+    modal.querySelectorAll('.seg button').forEach(function(b){
+      b.addEventListener('click', function(){ detailView = b.getAttribute('data-view'); renderDetail(); });
+    });
+    document.getElementById('detailLike').addEventListener('click', function(e){ toggleLike(r.id, e.currentTarget); });
+    document.getElementById('detailClose').addEventListener('click', closeDetail);
+    document.getElementById('detailEdit').addEventListener('click', function(){ closeDetail(); openModal(r); });
+    var eb = document.getElementById('detailEmbedBtn');
+    if(eb) eb.addEventListener('click', function(){
+      var wrap = document.getElementById('detailEmbed');
+      var show = wrap.classList.contains('hidden');
+      wrap.innerHTML = show ? embedHtml(r.link) : '';
+      wrap.classList.toggle('hidden', !show);
+      eb.textContent = '▶ ' + t(show ? 'hidePost' : 'previewPost');
+    });
+    var tb = document.getElementById('detailTranslate');
+    if(tb) tb.addEventListener('click', async function(){
+      var target = detailView;
+      var srcLang = r['text' + cap(other(target))] ? other(target) : (r.origLang || guessLang(r.caption || ''));
+      if(srcLang !== 'tr' && srcLang !== 'en') srcLang = 'auto';
+      var src = r['text' + cap(other(target))] || r.caption;
+      var fields = {};
+      if(srcLang === target){ fields['text' + cap(target)] = src; }
+      else {
+        tb.disabled = true; tb.textContent = t('translating');
+        var out = await translate(src, srcLang, target);
+        if(out == null){ tb.disabled = false; tb.textContent = '⇄ ' + t('translateNow'); return; }
+        fields['text' + cap(target)] = out;
+        fields.machine = Object.assign({}, r.machine);
+        fields.machine[target] = true;
+      }
+      if(!await saveRecipe(r, fields)) return;
+      showToast(t('toastTranslated'));
+      if(detailId === r.id) renderDetail();
+      renderGrid();
+    });
+  }
+
+  /* ---------- likes, delete ---------- */
+
+  async function toggleLike(id, btnEl){
+    var r = getRecipe(id);
+    if(!r) return;
+    if(!await saveRecipe(r, { liked:!r.liked })) return;
+    if(btnEl){
+      btnEl.classList.toggle('liked', r.liked);
+      btnEl.textContent = r.liked ? '♥' : '♡';
+      btnEl.classList.add('pop');
+      setTimeout(function(){ btnEl.classList.remove('pop'); }, 300);
+    }
+    renderGrid();
+    showToast(r.liked ? t('toastLiked') : t('toastUnliked'));
+  }
+
+  async function removeRecipe(id){
+    try{
+      await api('DELETE', '/api/recipes/' + encodeURIComponent(id));
+    }catch(e){
+      showToast(t('saveFailed') + ' ' + e.message);
+      return;
+    }
+    state.recipes = state.recipes.filter(function(x){ return x.id !== id; });
+    renderAll();
+    showToast(t('toastDeleted'));
+  }
+
+  /* ---------- add / edit form ---------- */
+
+  function setFormEmbed(show){
+    var wrap = document.getElementById('formEmbed');
+    var link = document.getElementById('fLink').value.trim();
+    if(show && igCode(link)){
+      wrap.innerHTML = embedHtml(link);
+      wrap.classList.remove('hidden');
+    } else {
+      wrap.innerHTML = '';
+      wrap.classList.add('hidden');
+    }
+    document.getElementById('previewPostBtn').textContent = '▶ ' + t(show && igCode(link) ? 'hidePost' : 'previewPost');
+  }
+
+  function openModal(existing){
+    state.editingId = existing ? existing.id : null;
+    document.getElementById('modalTitle').textContent = existing ? t('editRecipe') : t('addRecipe');
+    var f = function(id, v){ document.getElementById(id).value = v || ''; };
+    f('fTitleTr', existing && existing.titleTr);
+    f('fTitleEn', existing && existing.titleEn);
+    f('fNoteTr', existing && existing.noteTr);
+    f('fNoteEn', existing && existing.noteEn);
+    f('fLink', existing && existing.link);
+    f('fCaption', existing && existing.caption);
+    f('fTextTr', existing && existing.textTr);
+    f('fTextEn', existing && existing.textEn);
+    f('fTags', existing && (existing.tags||[]).map(tagLabel).join(', '));
+    var cat = existing && existing.category !== 'inbox' ? existing.category : (state.activeCategory !== 'inbox' ? state.activeCategory : 'dinner');
+    document.getElementById('fCategory').value = cat;
+    document.getElementById('fFormula').checked = existing ? !!existing.formula : false;
+    document.getElementById('deleteBtn').classList.toggle('hidden', !existing);
+    setFormEmbed(false);
+    document.getElementById('modalOverlay').classList.remove('hidden');
+    document.getElementById(existing ? 'fTitleTr' : 'fLink').focus();
+  }
+
+  function closeModal(){
+    setFormEmbed(false);
+    document.getElementById('modalOverlay').classList.add('hidden');
+    state.editingId = null;
+  }
+
+  function parseTags(s){
+    var byLabel = {};
+    Object.keys(TAGS).forEach(function(k){
+      byLabel[k] = k;
+      byLabel[TAGS[k].tr.toLocaleLowerCase('tr')] = k;
+      byLabel[TAGS[k].en.toLocaleLowerCase('tr')] = k;
+    });
+    return s.split(',').map(function(x){ return x.trim(); }).filter(Boolean).map(function(x){
+      return byLabel[x.toLocaleLowerCase('tr')] || x;
+    });
+  }
+
+  async function fillByTranslation(btn, srcId, srcLang, dstId, dstLang){
+    var src = document.getElementById(srcId).value.trim();
+    if(!src) return;
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = t('translating');
+    var out = await translate(src, srcLang, dstLang);
+    btn.disabled = false; btn.textContent = label;
+    if(out != null){
+      document.getElementById(dstId).value = out;
+      formMachine[dstLang] = true;
+    }
+  }
+  var formMachine = {};
+
+  async function captionToBoth(){
+    var capText = document.getElementById('fCaption').value.trim();
+    if(!capText) return;
+    var lang = guessLang(capText);
+    var same = 'fText' + cap(lang), otherId = 'fText' + cap(other(lang));
+    if(!document.getElementById(same).value.trim()) document.getElementById(same).value = capText;
+    if(!document.getElementById(otherId).value.trim()){
+      await fillByTranslation(document.getElementById('captionToBothBtn'), 'fCaption', lang, otherId, other(lang));
+    }
+  }
+
+  async function handleSubmit(e){
+    e.preventDefault();
+    var v = function(id){ return document.getElementById(id).value.trim(); };
+    var titleTr = v('fTitleTr'), titleEn = v('fTitleEn');
+    if(!titleTr && !titleEn){
+      alert(t('validationTitle'));
+      return;
+    }
+    var data = {
+      titleTr:titleTr, titleEn:titleEn,
+      category:document.getElementById('fCategory').value,
+      noteTr:v('fNoteTr'), noteEn:v('fNoteEn'),
+      link:v('fLink'),
+      caption:v('fCaption'),
+      textTr:v('fTextTr'), textEn:v('fTextEn'),
+      tags:parseTags(document.getElementById('fTags').value),
+      formula:document.getElementById('fFormula').checked
+    };
+    var r = state.editingId ? getRecipe(state.editingId) : null;
+    if(data.caption && !(r && r.origLang)) data.origLang = guessLang(data.caption);
+    var machine = Object.assign({}, r && r.machine);
+    if(r && data.textTr !== r.textTr) delete machine.tr;
+    if(r && data.textEn !== r.textEn) delete machine.en;
+    Object.keys(formMachine).forEach(function(k){ machine[k] = true; });
+    data.machine = machine;
+    var saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true;
+    try{
+      if(r){
+        if(!await saveRecipe(r, data)) return;
+      } else {
+        var created = await api('POST', '/api/recipes', data);
+        state.recipes.push(created.recipe);
+      }
+    }catch(err){
+      showToast(t('saveFailed') + ' ' + err.message);
+      return;
+    }finally{
+      saveBtn.disabled = false;
+    }
+    formMachine = {};
+    closeModal();
+    state.activeCategory = data.category;
+    state.activeTag = null;
+    renderAll();
+    showToast(t('toastSaved'));
+  }
+
+  async function handleDelete(){
+    if(state.editingId && confirm(t('deleteConfirm'))){
+      var id = state.editingId;
+      closeModal();
+      await removeRecipe(id);
+    }
+  }
+
+  /* ---------- meal ideas ---------- */
+
+  function pickIdea(){
+    var named = function(r){ return r.category !== 'inbox' && (r.titleTr || r.titleEn); };
+    var pool = state.recipes.filter(function(r){
+      return named(r) && r.id !== currentIdeaId &&
+        (state.activeCategory === 'inbox' || r.category === state.activeCategory) &&
+        (!state.activeTag || (r.tags||[]).indexOf(state.activeTag) !== -1) &&
+        (!state.likedOnly || r.liked);
+    });
+    if(pool.length === 0) pool = state.recipes.filter(function(r){ return named(r) && r.id !== currentIdeaId; });
+    if(pool.length === 0) return null;
+    // favourites come up three times as often
+    var weighted = [];
+    pool.forEach(function(r){ weighted.push(r); if(r.liked){ weighted.push(r, r); } });
+    return weighted[Math.floor(Math.random()*weighted.length)];
+  }
+
+  function renderIdea(){
+    var r = pickIdea();
+    var slot = document.getElementById('ideaCalloutSlot');
+    if(!r){ slot.innerHTML = ''; currentIdeaId = null; return; }
+    currentIdeaId = r.id;
+    var tt = titles(r);
+    var note = state.lang==='tr' ? r.noteTr : r.noteEn;
+    var html = '<div class="idea-callout">';
+    html += '<div><p class="idea-label">' + esc(t('ideaLabel')) + ' · ' + esc(catLabel(r.category)) + (r.liked ? ' · ♥' : '') + '</p>';
+    html += '<p class="idea-title">' + esc(tt.primary) + (tt.secondary?'<span class="en">'+esc(tt.secondary)+'</span>':'') + '</p>';
+    if(note) html += '<p class="idea-note">' + esc(note) + '</p>';
+    html += '</div><div class="idea-callout-actions">';
+    html += '<button id="ideaShowBtn">📄 ' + esc(t('ideaShow')) + '</button>';
+    html += '<button id="ideaAgainBtn">🎲 ' + esc(t('ideaAgain')) + '</button>';
+    html += '<button id="ideaCloseBtn">' + esc(t('ideaDismiss')) + '</button>';
+    html += '</div></div>';
+    slot.innerHTML = html;
+    document.getElementById('ideaShowBtn').addEventListener('click', function(){ openDetail(r.id); });
+    document.getElementById('ideaAgainBtn').addEventListener('click', renderIdea);
+    document.getElementById('ideaCloseBtn').addEventListener('click', function(){
+      slot.innerHTML = ''; currentIdeaId = null;
+    });
+  }
+
+  /* ---------- import from a link ---------- */
+
+  var importBusy = false;
+
+  function setImportStatus(msg, isError){
+    var el = document.getElementById('importStatus');
+    el.textContent = msg || '';
+    el.classList.toggle('hidden', !msg);
+    el.classList.toggle('error', !!isError);
+  }
+
+  async function importLink(e){
+    e.preventDefault();
+    var input = document.getElementById('importInput');
+    var btn = document.getElementById('importSubmit');
+    var url = input.value.trim();
+    if(!url || importBusy) return;
+    importBusy = true;
+    btn.disabled = true;
+    btn.textContent = t('importing');
+    setImportStatus(t('importWorking'));
+    try{
+      var data = await api('POST', '/api/import', { url:url });
+      var r = data.recipe;
+      if(!getRecipe(r.id)) state.recipes.push(r);
+      input.value = '';
+      setImportStatus(data.duplicate ? t('importDuplicate') : (r.category === 'inbox' ? t('importInbox') : t('importDone')));
+      state.activeCategory = r.category;
+      state.activeTag = null;
+      renderAll();
+      openDetail(r.id);
+    }catch(err){
+      setImportStatus(err.message, true);
+    }finally{
+      importBusy = false;
+      btn.disabled = false;
+      btn.textContent = '+ ' + t('importBtn');
+    }
+  }
+
+  /* ---------- wiring ---------- */
+
+  function wireStaticEvents(){
+    document.getElementById('langToggle').addEventListener('click', async function(){
+      state.lang = other(state.lang);
+      saveLang();
+      renderAll();
+      if(currentIdeaId) renderIdea();
+      if(detailId){ detailView = state.lang; renderDetail(); }
+    });
+    document.getElementById('likedOnly').addEventListener('change', function(e){
+      state.likedOnly = e.target.checked;
+      renderGrid();
+    });
+    document.getElementById('searchInput').addEventListener('input', function(e){
+      state.search = e.target.value;
+      renderGrid();
+    });
+    document.getElementById('ideaBtn').addEventListener('click', renderIdea);
+    document.getElementById('addBtn').addEventListener('click', function(){ openModal(null); });
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('recipeForm').addEventListener('submit', handleSubmit);
+    document.getElementById('deleteBtn').addEventListener('click', handleDelete);
+    document.getElementById('previewPostBtn').addEventListener('click', function(){
+      setFormEmbed(document.getElementById('formEmbed').classList.contains('hidden'));
+    });
+    document.getElementById('captionToBothBtn').addEventListener('click', captionToBoth);
+    document.getElementById('trFromEnBtn').addEventListener('click', function(e){ fillByTranslation(e.currentTarget, 'fTextEn', 'en', 'fTextTr', 'tr'); });
+    document.getElementById('enFromTrBtn').addEventListener('click', function(e){ fillByTranslation(e.currentTarget, 'fTextTr', 'tr', 'fTextEn', 'en'); });
+    document.getElementById('importForm').addEventListener('submit', importLink);
+    document.getElementById('modalOverlay').addEventListener('click', function(e){
+      if(e.target === e.currentTarget) closeModal();
+    });
+    document.getElementById('detailOverlay').addEventListener('click', function(e){
+      if(e.target === e.currentTarget) closeDetail();
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape'){ closeModal(); closeDetail(); }
+    });
+  }
+
+  async function init(){
+    try{ state.lang = localStorage.getItem(LANG_KEY) || 'tr'; }catch(e){}
+    if(!I18N[state.lang]) state.lang = 'tr';
+    document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Yükleniyor / Loading…</p></div>';
+    wireStaticEvents();
+    try{
+      await loadData();
+    }catch(e){
+      document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Sunucuya ulaşılamadı / Could not reach the server: ' + esc(e.message) + '</p></div>';
+      renderChrome();
+      return;
+    }
+    renderAll();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

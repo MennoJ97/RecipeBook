@@ -1,0 +1,4 @@
+# The server itself only needs the Python standard library (3.10+).
+# Optional: lets Claude clean up imported captions into bilingual recipes with
+# title, category and tags. Needs ANTHROPIC_API_KEY (or an `ant auth login` profile).
+anthropic>=1.13
