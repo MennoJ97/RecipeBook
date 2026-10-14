@@ -46,7 +46,7 @@ docker run -d -p 8080:8080 -v ./data:/data -e RECIPEBOOK_PASSWORD=choose-somethi
 
 - **Android (Chrome):** menu ⋮ → *Install app* (or *Add to Home screen*). The installed app
   also appears in the share sheet: share a reel or post from Instagram, TikTok or YouTube to
-  *Çok Lekker* and it is imported straight away.
+  *Çok Lekker* and the link is filled in, ready to import with one tap.
 - **iPhone (Safari):** Share → *Add to Home Screen*. iOS has no share target for web apps, so
   copy the link and paste it as usual. A home-screen app keeps its own cookies, so behind a
   login proxy you sign in once more inside the app.

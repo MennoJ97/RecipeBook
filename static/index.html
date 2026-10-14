@@ -1554,6 +1554,7 @@
 
   // Android's share sheet opens /?title=…&text=…&url=… (share_target in the manifest).
   // Apps put the link in different fields (Instagram uses text), so take the first link anywhere.
+  // Only fill the form: any site can link here with these parameters, so importing waits for a tap.
   function handleShare(){
     var q = new URLSearchParams(location.search);
     if(!q.has('url') && !q.has('text') && !q.has('title')) return;
@@ -1562,7 +1563,7 @@
     var link = (shared.match(/https?:\/\/[^\s"'<>]+/) || [])[0];
     if(link){
       document.getElementById('importInput').value = link;
-      runImport({ url:link }, document.getElementById('importSubmit'), 'importBtn');
+      document.getElementById('importSubmit').focus();
     }else if((q.get('text') || '').trim()){
       document.getElementById('pasteText').value = q.get('text').trim();
       showPasteBox(true);
