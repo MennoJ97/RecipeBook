@@ -24,7 +24,11 @@ import importer
 import processing
 
 ROOT = Path(__file__).resolve().parent
-PAGE = ROOT / "static" / "index.html"
+STATIC = ROOT / "static"
+PAGE = STATIC / "index.html"
+# What the installable app needs next to the page: manifest, service worker, icons.
+ASSETS = {"/manifest.webmanifest": "application/manifest+json", "/sw.js": "text/javascript; charset=utf-8"}
+ASSETS |= {f"/icons/{p.name}": "image/png" for p in (STATIC / "icons").glob("*.png")}
 DATA_DIR = Path(os.environ.get("RECIPEBOOK_DATA", ROOT / "data"))
 DB_FILE = DATA_DIR / "recipes.json"
 BACKUP_DIR = DATA_DIR / "backups"
@@ -188,6 +192,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
             self._send(HTTPStatus.OK, PAGE.read_bytes(), "text/html; charset=utf-8")
+        elif path in ASSETS:
+            self._send(HTTPStatus.OK, (STATIC / path.lstrip("/")).read_bytes(), ASSETS[path])
         elif path == "/api/recipes":
             self._send(HTTPStatus.OK, {"recipes": store.all(), "ai": processing.ai_name()})
         elif path == "/api/export":
