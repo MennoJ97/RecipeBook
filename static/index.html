@@ -1302,8 +1302,8 @@
     setImportStatus(t('importWorking'));
     try{
       var data = await api('POST', '/api/import', { url:url });
-      var r = data.recipe;
-      if(!getRecipe(r.id)) state.recipes.push(r);
+      var r = data.recipe, known = getRecipe(r.id);
+      if(known) Object.assign(known, r); else state.recipes.push(r);
       input.value = '';
       setImportStatus(data.duplicate ? t('importDuplicate') : (r.category === 'inbox' ? t('importInbox') : t('importDone')));
       state.activeCategory = r.category;

@@ -97,7 +97,30 @@ def instagram_code(url):
     return m.group(1) if m else None
 
 
+CRAWLER_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+# og:description looks like '157 likes, 10 comments - user on April 10, 2026: "caption".' (wording varies by locale)
+OG_CAPTION_RE = re.compile(r'^[^"]*?: "(.*)"\.?\s*$', re.S)
+OG_AUTHOR_RE = re.compile(r"instagram\.com/([\w.]+)/(?:p|reel|tv)/")
+
+
+def _instagram_og(code):
+    """Caption from the post page's preview tags, which Instagram still serves to link-preview crawlers."""
+    page = fetch(f"https://www.instagram.com/p/{code}/", headers={"User-Agent": CRAWLER_UA})
+    m = OG_CAPTION_RE.match(_meta(page, "og:description"))
+    if not m or not m.group(1).strip():
+        return None
+    og_url = _meta(page, "og:url")
+    author = OG_AUTHOR_RE.search(og_url)
+    kind = "reel" if "/reel/" in og_url else "p"
+    return {"platform": "instagram", "link": f"https://www.instagram.com/{kind}/{code}/",
+            "author": author.group(1) if author else "", "title": "", "text": m.group(1).strip()}
+
+
 def from_instagram(url, code):
+    found = _instagram_og(code)
+    if found:
+        return found
+    # The embed page used to carry the caption; by October 2026 it showed "post may have been removed".
     for kind in ("p", "reel"):
         page = fetch(f"https://www.instagram.com/{kind}/{code}/embed/captioned/", headers={
             # Instagram only renders the embed when the request looks like an iframe load.

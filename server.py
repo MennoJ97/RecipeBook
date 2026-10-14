@@ -116,6 +116,12 @@ def clean(fields):
     return out
 
 
+def has_text(recipe):
+    """False for a link that was saved without its caption, which a new import may fill in."""
+    return bool(str(recipe.get("caption") or "").strip()
+                or any(str(recipe.get("text" + lang.capitalize()) or "").strip() for lang in processing.LANGS))
+
+
 store = None
 
 
@@ -212,17 +218,23 @@ class Handler(BaseHTTPRequestHandler):
             if not url:
                 return self._error(HTTPStatus.BAD_REQUEST, "No link given.")
             existing = store.find_link(url)
-            if existing:
+            if existing and has_text(existing):
                 return self._send(HTTPStatus.OK, {"recipe": existing, "duplicate": True})
             try:
                 source = importer.fetch_source(url)
             except importer.ImportError_ as e:
                 return self._error(HTTPStatus.UNPROCESSABLE_ENTITY, str(e))
-            existing = store.find_link(source["link"])
-            if existing:
+            existing = existing or store.find_link(source["link"])
+            if existing and has_text(existing):
                 return self._send(HTTPStatus.OK, {"recipe": existing, "duplicate": True})
-            recipe = store.add(processing.build_recipe(source))
-            return self._send(HTTPStatus.CREATED, {"recipe": recipe})
+            fields = processing.build_recipe(source)
+            if existing:
+                # A link saved earlier without its caption: fill in what is missing, keep what was typed.
+                fill = {k: v for k, v in fields.items()
+                        if not existing.get(k) or (k == "category" and existing[k] == "inbox")}
+                fill["machine"] = {**fields.get("machine", {}), **existing.get("machine", {})}
+                return self._send(HTTPStatus.OK, {"recipe": store.update(existing["id"], fill)})
+            return self._send(HTTPStatus.CREATED, {"recipe": store.add(fields)})
 
         if path == "/api/recipes":
             return self._send(HTTPStatus.CREATED, {"recipe": store.add(body)})
