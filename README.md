@@ -56,7 +56,9 @@ GEMINI_API_KEY=... python server.py
 ```
 
 **Any other OpenAI-compatible service** works the same way, for example Groq's free tier or a
-local Ollama. `LLM_MODEL` on its own also picks a different Gemini model.
+local Ollama. `LLM_MODEL` can list several models, comma-separated, tried in order; on its own it
+replaces Gemini's default of `gemini-flash-lite-latest,gemini-flash-latest` (Flash-Lite first,
+because the full Flash model is often too busy on the free tier).
 
 ```bash
 LLM_BASE_URL=https://api.groq.com/openai/v1 LLM_API_KEY=gsk_... LLM_MODEL=llama-3.3-70b-versatile python server.py

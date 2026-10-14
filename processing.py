@@ -5,10 +5,11 @@ title, category and tags. Two kinds can be configured, tried in this order:
 
 - Claude: ANTHROPIC_API_KEY (or an `ant auth login` profile) and the `anthropic` package.
 - Any OpenAI-compatible chat API, which covers free options:
-    GEMINI_API_KEY=...                  Google Gemini's free tier (model gemini-flash-latest)
+    GEMINI_API_KEY=...                  Google Gemini's free tier (Flash-Lite, then Flash)
   or the general form, e.g. for Groq or a local Ollama:
     LLM_BASE_URL=https://api.groq.com/openai/v1  LLM_API_KEY=...  LLM_MODEL=llama-3.3-70b-versatile
-  LLM_MODEL also overrides the Gemini model.
+  LLM_MODEL may list several models, comma-separated, tried in order (it also overrides
+  Gemini's); a busy, retired or slow model moves on to the next.
 
 Without any, or when every model fails (say a free quota runs out), the caption is
 machine-translated and the recipe lands in the Inbox for a human to title and file.
@@ -125,18 +126,22 @@ def _claude(system, user, schema=None, effort="medium"):
 # ---------- OpenAI-compatible chat APIs (Gemini, Groq, Ollama, ...) ----------
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-GEMINI_MODEL = "gemini-flash-latest"
+# Flash-Lite first: it writes a recipe in a couple of seconds, while the full Flash model often
+# answers 503 "high demand" (or hangs) on the free tier. Full Flash is the backup.
+GEMINI_MODELS = "gemini-flash-lite-latest,gemini-flash-latest"
+LLM_TIMEOUT = 45  # seconds per request; a healthy answer takes a few
 
 
 def llm_config():
-    """The configured OpenAI-compatible service as {url, key, model, name}, or None."""
+    """The configured OpenAI-compatible service as {url, key, models, name}, or None."""
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     url = os.environ.get("LLM_BASE_URL", "").strip() or (GEMINI_URL if gemini_key else "")
-    model = os.environ.get("LLM_MODEL", "").strip() or (GEMINI_MODEL if url == GEMINI_URL else "")
-    if not url or not model:
+    models = os.environ.get("LLM_MODEL", "").strip() or (GEMINI_MODELS if url == GEMINI_URL else "")
+    models = [m.strip() for m in models.split(",") if m.strip()]
+    if not url or not models:
         return None
     return {"url": url.rstrip("/") + "/", "key": os.environ.get("LLM_API_KEY", "").strip() or gemini_key,
-            "model": model, "name": "Gemini" if url == GEMINI_URL else model}
+            "models": models, "name": "Gemini" if url == GEMINI_URL else models[0]}
 
 
 def _llm_request(path, body=None):
@@ -146,7 +151,7 @@ def _llm_request(path, body=None):
         headers["Authorization"] = "Bearer " + config["key"]
     req = urllib.request.Request(config["url"] + path, headers=headers,
                                  data=json.dumps(body).encode("utf-8") if body is not None else None)
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=LLM_TIMEOUT) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -158,52 +163,60 @@ def _retry_after(error):
 
 
 def _llm(system, user, schema=None, effort=None):
-    """One chat completion; effort is Claude-only and ignored here."""
+    """A chat completion from the first configured model that answers; effort is Claude-only."""
     config = llm_config()
+    response_format = None
     if schema:
         system += "\n\nReply with only a JSON object that matches this JSON schema:\n" + json.dumps(schema)
-    body = {"model": config["model"],
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
-    if schema:
-        body["response_format"] = {"type": "json_schema",
-                                   "json_schema": {"name": "recipe", "strict": True, "schema": schema}}
-    tries = 0
-    while True:
-        tries += 1
-        try:
-            data = _llm_request("chat/completions", body)
-            break
-        except urllib.error.HTTPError as e:
-            detail = " ".join(e.read()[:300].decode("utf-8", "replace").split())
-            if e.code == 400 and body.get("response_format", {}).get("type") == "json_schema":
-                body["response_format"] = {"type": "json_object"}  # service without strict schemas
-                continue
-            if e.code in (429, 503) and tries < 3:  # free tiers rate-limit per minute
-                time.sleep(_retry_after(e))
-                continue
-            raise RuntimeError(f"HTTP {e.code}: {detail}") from None
-    choice = data["choices"][0]
-    if choice.get("finish_reason") == "length":
-        raise RuntimeError("the answer was cut off")
-    return choice["message"].get("content") or ""
+        response_format = {"type": "json_schema", "json_schema": {"name": "recipe", "strict": True, "schema": schema}}
+    errors = []
+    for model in config["models"]:
+        body = {"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+        for attempt in range(3):
+            if response_format:
+                body["response_format"] = response_format
+            try:
+                data = _llm_request("chat/completions", body)
+            except urllib.error.HTTPError as e:
+                detail = " ".join(e.read()[:300].decode("utf-8", "replace").split())
+                if e.code == 400 and response_format and response_format["type"] == "json_schema":
+                    response_format = {"type": "json_object"}  # service without strict schemas
+                    continue
+                if e.code == 429 and attempt < 2:  # per-minute quota: wait it out
+                    time.sleep(_retry_after(e))
+                    continue
+                errors.append(f"{model}: HTTP {e.code}: {detail[:200]}")  # busy (503), retired (404), ...
+                break
+            except OSError as e:  # timed out or unreachable
+                errors.append(f"{model}: {e}")
+                break
+            choice = data["choices"][0]
+            if choice.get("finish_reason") == "length":
+                errors.append(f"{model}: the answer was cut off")
+                break
+            return choice["message"].get("content") or ""
+        else:
+            errors.append(f"{model}: still failing after retries")
+    raise RuntimeError("; ".join(errors))
 
 
 def check_llm():
-    """Log whether the configured service accepts the key and knows the model (no quota used)."""
+    """Log whether the configured service accepts the key and knows each model (no quota used)."""
     config = llm_config()
     if not config:
         if os.environ.get("LLM_BASE_URL", "").strip():
             log.warning("LLM_BASE_URL is set but LLM_MODEL is not; that service is not used")
         return
-    try:
-        _llm_request("models/" + urllib.parse.quote(config["model"], safe=""))
-        log.info("%s: model %s is available", config["name"], config["model"])
-    except urllib.error.HTTPError as e:
-        detail = " ".join(e.read()[:400].decode("utf-8", "replace").split())
-        log.warning("%s: checking model %s failed (HTTP %s: %s); imports fall back to basic until fixed",
-                    config["name"], config["model"], e.code, detail)
-    except Exception as e:
-        log.warning("%s: could not reach %s: %s", config["name"], config["url"], e)
+    for model in config["models"]:
+        try:
+            _llm_request("models/" + urllib.parse.quote(model, safe=""))
+            log.info("%s: model %s is available", config["name"], model)
+        except urllib.error.HTTPError as e:
+            detail = " ".join(e.read()[:400].decode("utf-8", "replace").split())
+            log.warning("%s: checking model %s failed (HTTP %s: %s)", config["name"], model, e.code, detail)
+        except Exception as e:
+            log.warning("%s: could not reach %s: %s", config["name"], config["url"], e)
+            return
 
 
 # ---------- structuring a recipe ----------
@@ -304,12 +317,13 @@ def _mymemory(text, src, dst):
     return _join(out)
 
 
-def translate(text, src, dst):
-    """Translate text; src may be "auto". Raises RuntimeError when every service fails."""
+def translate(text, src, dst, models=True):
+    """Translate text; src may be "auto". models=False uses only the free translation services.
+    Raises RuntimeError when every service fails."""
     if not text.strip() or src == dst:
         return text
     errors = []
-    if dst in LANG_NAMES:
+    if models and dst in LANG_NAMES:
         src_name = LANG_NAMES.get(src, "the source language")
         for name, call in ai_backends():
             try:
@@ -375,8 +389,9 @@ def build_recipe(source):
             fields["text" + cap], fields["title" + cap] = text, title
             continue
         try:
-            fields["text" + cap] = translate(text, lang, dst)
-            fields["title" + cap] = translate(title, lang, dst) if title else ""
+            # The models already failed on this recipe (or there are none): don't wait on them again.
+            fields["text" + cap] = translate(text, lang, dst, models=False)
+            fields["title" + cap] = translate(title, lang, dst, models=False) if title else ""
             fields["machine"][dst] = True
         except RuntimeError:
             pass  # the page offers a translate button later
