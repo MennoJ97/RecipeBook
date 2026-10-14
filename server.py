@@ -183,7 +183,7 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             self._send(HTTPStatus.OK, PAGE.read_bytes(), "text/html; charset=utf-8")
         elif path == "/api/recipes":
-            self._send(HTTPStatus.OK, {"recipes": store.all(), "ai": processing.ai_available()})
+            self._send(HTTPStatus.OK, {"recipes": store.all(), "ai": processing.ai_name()})
         elif path == "/api/export":
             name = f"tarif-kutusu-{date.today().isoformat()}.json"
             self._send(HTTPStatus.OK, json.dumps({"recipes": store.all()}, ensure_ascii=False, indent=1).encode("utf-8"),
@@ -274,8 +274,9 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     store = Store(DB_FILE)
-    log.info("Recipe Box: %d recipes, Claude %s", len(store.recipes),
-             "enabled" if processing.ai_available() else "not configured (basic import)")
+    log.info("Recipe Box: %d recipes, imports via %s", len(store.recipes),
+             processing.ai_name() or "basic translation (no model configured)")
+    processing.check_llm()
     if args.host not in ("127.0.0.1", "localhost") and not PASSWORD:
         log.warning("Listening on %s without RECIPEBOOK_PASSWORD: anyone on the network can edit recipes.", args.host)
     log.info("Open http://%s:%d", "localhost" if args.host in ("0.0.0.0", "127.0.0.1") else args.host, args.port)

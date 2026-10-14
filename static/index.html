@@ -480,7 +480,7 @@
       toastTranslated:'Çevrildi',
       validationTitle:'Lütfen en az bir dilde başlık gir.',
       exportBtn:'Yedeği indir (JSON)',
-      aiOn:'Claude tarifleri düzenleyip çeviriyor.',
+      aiOn:'{ai} tarifleri düzenleyip çeviriyor.',
       aiOff:'Basit içe aktarma: açıklama çevrilir, başlık ve kategoriyi sen seçersin.',
       importPlaceholder:'Instagram, TikTok, YouTube ya da tarif sitesi bağlantısı yapıştır…',
       importBtn:'Tarifi ekle', importing:'Ekleniyor…',
@@ -535,7 +535,7 @@
       toastTranslated:'Translated',
       validationTitle:'Please enter a title in at least one language.',
       exportBtn:'Download backup (JSON)',
-      aiOn:'Claude cleans up and translates imported recipes.',
+      aiOn:'{ai} cleans up and translates imported recipes.',
       aiOff:'Basic import: the caption gets translated, you pick the title and category.',
       importPlaceholder:'Paste an Instagram, TikTok, YouTube or recipe website link…',
       importBtn:'Add recipe', importing:'Adding…',
@@ -597,7 +597,7 @@
   async function loadData(){
     var data = await api('GET', '/api/recipes');
     state.recipes = data.recipes;
-    state.ai = !!data.ai;
+    state.ai = data.ai || '';
   }
 
   // Save the given fields of a recipe and replace the local copy with the server's.
@@ -700,7 +700,7 @@
     document.getElementById('saveBtn').textContent = t('save');
     document.getElementById('deleteBtn').textContent = t('delete');
     document.getElementById('exportBtn').textContent = t('exportBtn');
-    document.getElementById('aiNote').textContent = state.ai ? t('aiOn') : t('aiOff');
+    document.getElementById('aiNote').textContent = state.ai ? t('aiOn').replace('{ai}', state.ai) : t('aiOff');
     document.getElementById('importInput').placeholder = t('importPlaceholder');
     if(!importBusy) document.getElementById('importSubmit').textContent = '+ ' + t('importBtn');
     var embedShown = !document.getElementById('formEmbed').classList.contains('hidden');

@@ -37,22 +37,43 @@ docker build -t recipebook .
 docker run -d -p 8080:8080 -v ./data:/data -e RECIPEBOOK_PASSWORD=choose-something recipebook
 ```
 
-## Better imports with Claude (optional)
+## Better imports with a language model (optional)
 
-Without an API key, an imported caption is machine-translated (Google Translate's free endpoint,
+Without one, an imported caption is machine-translated (Google Translate's free endpoint,
 then MyMemory as a fallback) and the recipe goes to the Inbox, where you pick its title and
 category with Edit.
 
-With Claude, each import is rewritten into a clean "Ingredients / Method" recipe in both
-languages, with a title, category and tags, and lands directly in the right category:
+With a model, each import is rewritten into a clean "Ingredients / Method" recipe in both
+languages, with a title, category and tags, and lands directly in the right category.
+
+**Free: Google Gemini.** Create a key at https://aistudio.google.com/apikey (no card needed)
+and start the server with it. The free tier allows far more imports a day than anyone adds
+recipes; Google may use free-tier prompts to improve its models, which for public captions
+is usually fine.
+
+```bash
+GEMINI_API_KEY=... python server.py
+```
+
+**Any other OpenAI-compatible service** works the same way, for example Groq's free tier or a
+local Ollama. `LLM_MODEL` on its own also picks a different Gemini model.
+
+```bash
+LLM_BASE_URL=https://api.groq.com/openai/v1 LLM_API_KEY=gsk_... LLM_MODEL=llama-3.3-70b-versatile python server.py
+LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen3:8b python server.py
+```
+
+**Claude (paid)** is used first when configured: each import is one Claude Opus 5.5 request,
+typically a few cents.
 
 ```bash
 pip install -r requirements.txt
 ANTHROPIC_API_KEY=sk-ant-... python server.py
 ```
 
-The server log says at startup whether Claude is enabled. Each import is one Claude Opus 5.5
-request, typically a few cents.
+The server log says at startup which model imports use and, for Gemini and the like, whether
+the key and model were accepted. If a model fails on an import (a used-up free quota, say),
+that recipe falls back to the translated Inbox import, so imports never stop working.
 
 ## Where things are
 
@@ -60,7 +81,7 @@ request, typically a few cents.
 |---|---|
 | `server.py` | HTTP server and JSON API (`/api/recipes`, `/api/import`, `/api/translate`, `/api/export`) |
 | `importer.py` | Reads recipe text from a link. Try a link with `python importer.py <url>` |
-| `processing.py` | Turns that text into a bilingual recipe (Claude, or translation fallback) |
+| `processing.py` | Turns that text into a bilingual recipe (Claude, Gemini or another model, or translation fallback) |
 | `static/index.html` | The page |
 | `data/recipes.json` | All recipes. A copy is kept per day in `data/backups/`; "Download backup" on the page exports it too |
 

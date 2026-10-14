@@ -1,13 +1,24 @@
 """Turn fetched source text into a bilingual (Turkish/English) recipe.
 
-With Claude API credentials (ANTHROPIC_API_KEY or an `ant auth login` profile) and the
-`anthropic` package installed, Claude cleans the caption into a recipe, writes it in
-both languages and picks a title, category and tags. Without them, the caption is
+A language model cleans the caption into a recipe, writes it in both languages and picks a
+title, category and tags. Two kinds can be configured, tried in this order:
+
+- Claude: ANTHROPIC_API_KEY (or an `ant auth login` profile) and the `anthropic` package.
+- Any OpenAI-compatible chat API, which covers free options:
+    GEMINI_API_KEY=...                  Google Gemini's free tier (model gemini-flash-latest)
+  or the general form, e.g. for Groq or a local Ollama:
+    LLM_BASE_URL=https://api.groq.com/openai/v1  LLM_API_KEY=...  LLM_MODEL=llama-3.3-70b-versatile
+  LLM_MODEL also overrides the Gemini model.
+
+Without any, or when every model fails (say a free quota runs out), the caption is
 machine-translated and the recipe lands in the Inbox for a human to title and file.
 """
 import json
 import logging
+import os
 import re
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -41,7 +52,24 @@ def ai_client():
 
 
 def ai_available():
-    return ai_client() is not None
+    return bool(ai_backends())
+
+
+def ai_name():
+    """Name of the model used first for imports, or "" when imports are basic."""
+    backends = ai_backends()
+    return backends[0][0] if backends else ""
+
+
+def ai_backends():
+    """[(name, call)] for every configured model, best first."""
+    backends = []
+    if ai_client() is not None:
+        backends.append(("Claude", _claude))
+    config = llm_config()
+    if config:
+        backends.append((config["name"], _llm))
+    return backends
 
 
 STRUCTURE_SYSTEM = f"""You turn social-media captions and web pages that a Turkish home cook saved into entries for her bilingual recipe book.
@@ -94,11 +122,123 @@ def _claude(system, user, schema=None, effort="medium"):
     return next(b.text for b in response.content if b.type == "text")
 
 
-def structure_with_claude(source):
+# ---------- OpenAI-compatible chat APIs (Gemini, Groq, Ollama, ...) ----------
+
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+GEMINI_MODEL = "gemini-flash-latest"
+
+
+def llm_config():
+    """The configured OpenAI-compatible service as {url, key, model, name}, or None."""
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    url = os.environ.get("LLM_BASE_URL", "").strip() or (GEMINI_URL if gemini_key else "")
+    model = os.environ.get("LLM_MODEL", "").strip() or (GEMINI_MODEL if url == GEMINI_URL else "")
+    if not url or not model:
+        return None
+    return {"url": url.rstrip("/") + "/", "key": os.environ.get("LLM_API_KEY", "").strip() or gemini_key,
+            "model": model, "name": "Gemini" if url == GEMINI_URL else model}
+
+
+def _llm_request(path, body=None):
+    config = llm_config()
+    headers = {"Content-Type": "application/json"}
+    if config["key"]:
+        headers["Authorization"] = "Bearer " + config["key"]
+    req = urllib.request.Request(config["url"] + path, headers=headers,
+                                 data=json.dumps(body).encode("utf-8") if body is not None else None)
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _retry_after(error):
+    try:
+        return min(max(float(error.headers.get("Retry-After") or 10), 1), 30)
+    except ValueError:
+        return 10
+
+
+def _llm(system, user, schema=None, effort=None):
+    """One chat completion; effort is Claude-only and ignored here."""
+    config = llm_config()
+    if schema:
+        system += "\n\nReply with only a JSON object that matches this JSON schema:\n" + json.dumps(schema)
+    body = {"model": config["model"],
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    if schema:
+        body["response_format"] = {"type": "json_schema",
+                                   "json_schema": {"name": "recipe", "strict": True, "schema": schema}}
+    tries = 0
+    while True:
+        tries += 1
+        try:
+            data = _llm_request("chat/completions", body)
+            break
+        except urllib.error.HTTPError as e:
+            detail = " ".join(e.read()[:300].decode("utf-8", "replace").split())
+            if e.code == 400 and body.get("response_format", {}).get("type") == "json_schema":
+                body["response_format"] = {"type": "json_object"}  # service without strict schemas
+                continue
+            if e.code in (429, 503) and tries < 3:  # free tiers rate-limit per minute
+                time.sleep(_retry_after(e))
+                continue
+            raise RuntimeError(f"HTTP {e.code}: {detail}") from None
+    choice = data["choices"][0]
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError("the answer was cut off")
+    return choice["message"].get("content") or ""
+
+
+def check_llm():
+    """Log whether the configured service accepts the key and knows the model (no quota used)."""
+    config = llm_config()
+    if not config:
+        if os.environ.get("LLM_BASE_URL", "").strip():
+            log.warning("LLM_BASE_URL is set but LLM_MODEL is not; that service is not used")
+        return
+    try:
+        _llm_request("models/" + urllib.parse.quote(config["model"], safe=""))
+        log.info("%s: model %s is available", config["name"], config["model"])
+    except urllib.error.HTTPError as e:
+        detail = " ".join(e.read()[:400].decode("utf-8", "replace").split())
+        log.warning("%s: checking model %s failed (HTTP %s: %s); imports fall back to basic until fixed",
+                    config["name"], config["model"], e.code, detail)
+    except Exception as e:
+        log.warning("%s: could not reach %s: %s", config["name"], config["url"], e)
+
+
+# ---------- structuring a recipe ----------
+
+def _json_reply(text):
+    text = text.strip()
+    fenced = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.S)
+    return json.loads(fenced.group(1) if fenced else text)
+
+
+def _checked(recipe):
+    """The schema's fields from a model's answer, or ValueError when it is unusable."""
+    missing = [k for k in STRUCTURE_SCHEMA["required"] if k not in recipe]
+    if missing:
+        raise ValueError("answer is missing " + ", ".join(missing))
+    if not (str(recipe["textTr"]).strip() or str(recipe["textEn"]).strip()):
+        raise ValueError("answer has no recipe text")
+    out = {k: recipe[k] for k in STRUCTURE_SCHEMA["properties"]}
+    out["tags"] = [t for t in out["tags"] if t in TAGS] if isinstance(out["tags"], list) else []
+    if out["category"] not in CATEGORIES:
+        out["category"] = "inbox"
+    return out
+
+
+def structure(source):
+    """(model name, recipe fields) from the first model that gives a usable answer, else (None, None)."""
     user = (f"Source: {source['platform']} post by {source.get('author') or 'unknown'}\n"
             f"Title on the page: {source.get('title') or '(none)'}\n\n"
             f"<source_text>\n{source['text']}\n</source_text>")
-    return json.loads(_claude(STRUCTURE_SYSTEM, user, STRUCTURE_SCHEMA))
+    for name, call in ai_backends():
+        try:
+            return name, _checked(_json_reply(call(STRUCTURE_SYSTEM, user, STRUCTURE_SCHEMA)))
+        except Exception as e:
+            log.warning("%s structuring failed: %s", name, e)
+    return None, None
 
 
 # ---------- machine translation (no API key needed) ----------
@@ -169,14 +309,15 @@ def translate(text, src, dst):
     if not text.strip() or src == dst:
         return text
     errors = []
-    if ai_available() and dst in LANG_NAMES:
-        try:
-            src_name = LANG_NAMES.get(src, "the source language")
-            return _claude(f"Translate the user's recipe text from {src_name} to {LANG_NAMES[dst]}. Keep the "
-                           "line breaks, list markers and quantities. Reply with the translation only.",
-                           text, effort="low").strip()
-        except Exception as e:
-            errors.append(f"Claude: {e}")
+    if dst in LANG_NAMES:
+        src_name = LANG_NAMES.get(src, "the source language")
+        for name, call in ai_backends():
+            try:
+                return call(f"Translate the user's recipe text from {src_name} to {LANG_NAMES[dst]}. Keep the "
+                            "line breaks, list markers and quantities. Reply with the translation only.",
+                            text, effort="low").strip()
+            except Exception as e:
+                errors.append(f"{name}: {e}")
     for name, fn in (("Google", _google), ("MyMemory", _mymemory)):
         try:
             return fn(text, src, dst)
@@ -219,12 +360,9 @@ def build_recipe(source):
     """Recipe fields (without id/liked) for a fetched source."""
     base = {"link": source["link"], "platform": source["platform"], "author": source.get("author", ""),
             "caption": source["text"], "noteTr": "", "noteEn": "", "formula": False}
-    if ai_available():
-        try:
-            r = structure_with_claude(source)
-            return {**base, **r, "machine": {}, "importedWith": "claude"}
-        except Exception as e:
-            log.warning("Claude structuring failed, falling back to basic import: %s", e)
+    name, r = structure(source)
+    if r:
+        return {**base, **r, "machine": {}, "importedWith": name.lower()}
 
     text = clean_caption(source["text"])
     lang = guess_lang(text)
