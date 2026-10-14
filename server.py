@@ -30,7 +30,7 @@ DB_FILE = DATA_DIR / "recipes.json"
 BACKUP_DIR = DATA_DIR / "backups"
 PASSWORD = os.environ.get("RECIPEBOOK_PASSWORD", "")
 
-EDITABLE = {"category", "tags", "link", "caption", "formula", "liked", "machine", "origLang"} | {
+EDITABLE = {"category", "tags", "link", "caption", "formula", "liked", "machine", "origLang", "servings"} | {
     field + lang.capitalize() for field in ("title", "text", "note") for lang in processing.LANGS}
 CATEGORIES = set(processing.CATEGORIES) | {"inbox"}
 
@@ -111,6 +111,11 @@ def clean(fields):
             out[key] = {k: bool(v) for k, v in value.items() if k in processing.LANGS} if isinstance(value, dict) else {}
         elif key == "category":
             out[key] = value if value in CATEGORIES else "inbox"
+        elif key == "servings":  # how many people the recipe is for; 0 = unknown
+            try:
+                out[key] = min(max(int(value or 0), 0), 99)
+            except (TypeError, ValueError):
+                out[key] = 0
         else:
             out[key] = str(value or "").strip()
     return out
