@@ -1,6 +1,6 @@
 # Tarif Kutusu · Recipe Box
 
-A small bilingual (Turkish/English) recipe archive. Paste a link to an Instagram reel or post,
+A small recipe archive in Turkish, English and Dutch. Paste a link to an Instagram reel or post,
 a TikTok, a YouTube video or a recipe website, and the server reads the recipe from the
 caption or page and saves it. Recipes have favorites (♥), categories (lunch & dinner,
 breakfast, snacks, dessert, plus an Inbox for unsorted ones), tags, search, and a
@@ -43,7 +43,7 @@ Without one, an imported caption is machine-translated (Google Translate's free 
 then MyMemory as a fallback) and the recipe goes to the Inbox, where you pick its title and
 category with Edit.
 
-With a model, each import is rewritten into a clean "Ingredients / Method" recipe in both
+With a model, each import is rewritten into a clean "Ingredients / Method" recipe in all three
 languages, with a title, category and tags, and lands directly in the right category.
 
 **Free: Google Gemini.** Create a key at https://aistudio.google.com/apikey (no card needed)
@@ -77,13 +77,28 @@ The server log says at startup which model imports use and, for Gemini and the l
 the key and model were accepted. If a model fails on an import (a used-up free quota, say),
 that recipe falls back to the translated Inbox import, so imports never stop working.
 
+## Adding a language to existing recipes
+
+Recipes saved before Dutch was added have no Dutch text. `backfill.py` translates them through
+the running server's API (so it can run while the server is in use), one model request per
+recipe, and marks the results as machine translations until someone edits them:
+
+```bash
+python backfill.py --dry-run --limit 3   # preview a few
+python backfill.py                       # fill in every recipe that lacks Dutch
+docker compose exec recipebook python backfill.py   # the same inside the deployed container
+```
+
+Without it, opening a recipe in Dutch offers "Automatisch vertalen" for that one recipe.
+
 ## Where things are
 
 | Path | What |
 |---|---|
 | `server.py` | HTTP server and JSON API (`/api/recipes`, `/api/import`, `/api/translate`, `/api/export`) |
 | `importer.py` | Reads recipe text from a link. Try a link with `python importer.py <url>` |
-| `processing.py` | Turns that text into a bilingual recipe (Claude, Gemini or another model, or translation fallback) |
+| `processing.py` | Turns that text into a Turkish/English/Dutch recipe (Claude, Gemini or another model, or translation fallback) |
+| `backfill.py` | Translates existing recipes into a newly added language |
 | `static/index.html` | The page |
 | `data/recipes.json` | All recipes. A copy is kept per day in `data/backups/`; "Download backup" on the page exports it too |
 
@@ -91,7 +106,7 @@ that recipe falls back to the translated Inbox import, so imports never stop wor
 
 - Instagram is read through its public embed page, so private posts, deleted posts and some
   carousels return no caption. Use "Add by hand": paste the link, press "Show post", copy the
-  caption into "Original caption" and press "Copy to TR + EN".
+  caption into "Original caption" and press "Copy to TR + EN + NL".
 - A reel whose recipe is only spoken in the video (not written in the caption) has no text to
   import; the same manual route applies.
 - Instagram can change its embed page at any time. If imports start failing for every post,

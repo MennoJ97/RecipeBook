@@ -30,8 +30,8 @@ DB_FILE = DATA_DIR / "recipes.json"
 BACKUP_DIR = DATA_DIR / "backups"
 PASSWORD = os.environ.get("RECIPEBOOK_PASSWORD", "")
 
-EDITABLE = {"titleTr", "titleEn", "category", "tags", "noteTr", "noteEn", "link", "caption",
-            "textTr", "textEn", "formula", "liked", "machine", "origLang"}
+EDITABLE = {"category", "tags", "link", "caption", "formula", "liked", "machine", "origLang"} | {
+    field + lang.capitalize() for field in ("title", "text", "note") for lang in processing.LANGS}
 CATEGORIES = set(processing.CATEGORIES) | {"inbox"}
 
 log = logging.getLogger("recipebook")
@@ -108,7 +108,7 @@ def clean(fields):
         elif key in ("formula", "liked"):
             out[key] = bool(value)
         elif key == "machine":
-            out[key] = {k: bool(v) for k, v in value.items() if k in ("tr", "en")} if isinstance(value, dict) else {}
+            out[key] = {k: bool(v) for k, v in value.items() if k in processing.LANGS} if isinstance(value, dict) else {}
         elif key == "category":
             out[key] = value if value in CATEGORIES else "inbox"
         else:
@@ -229,7 +229,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/translate":
             text, src, dst = str(body.get("text") or ""), body.get("from", "auto"), body.get("to", "en")
-            if src not in ("tr", "en", "auto") or dst not in ("tr", "en"):
+            if src not in (*processing.LANGS, "auto") or dst not in processing.LANGS:
                 return self._error(HTTPStatus.BAD_REQUEST, "unsupported language")
             try:
                 return self._send(HTTPStatus.OK, {"text": processing.translate(text, src, dst)})

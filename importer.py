@@ -64,7 +64,7 @@ def fetch(url, headers=None):
     req = urllib.request.Request(url, headers={
         "User-Agent": BROWSER_UA,
         "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8,nl;q=0.7",
         **(headers or {}),
     })
     try:

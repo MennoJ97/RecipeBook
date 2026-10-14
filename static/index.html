@@ -56,12 +56,16 @@
 
   .controls{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
   .lang-toggle{
-    background:var(--bg-2); color:var(--cream); border:1px solid rgba(241,234,214,0.25);
-    font-family:var(--font-m); font-size:12px; letter-spacing:0.06em; padding:9px 14px;
-    border-radius:20px; cursor:pointer; transition:background .15s, transform .1s;
+    display:inline-flex; background:var(--bg-2); border:1px solid rgba(241,234,214,0.25);
+    border-radius:20px; overflow:hidden;
   }
-  .lang-toggle:hover{ background:#2c3524; }
-  .lang-toggle:active{ transform:scale(0.96); }
+  .lang-toggle button{
+    background:none; border:none; color:var(--cream); font-family:var(--font-m); font-size:12px;
+    letter-spacing:0.06em; padding:9px 12px; cursor:pointer; opacity:0.6; transition:background .15s, opacity .15s;
+  }
+  .lang-toggle button + button{ border-left:1px solid rgba(241,234,214,0.15); }
+  .lang-toggle button:hover{ background:#2c3524; opacity:1; }
+  .lang-toggle button[aria-pressed="true"]{ background:var(--cream); color:var(--ink); opacity:1; font-weight:600; }
   .liked-filter{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--cream); cursor:pointer; user-select:none; }
   .liked-filter input{ accent-color:var(--brick); width:16px; height:16px; cursor:pointer; }
 
@@ -214,6 +218,7 @@
     max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); color:var(--ink);
   }
   .modal.wide{ max-width:720px; }
+  .modal.form{ max-width:900px; }
   .modal h2{ font-family:var(--font-d); color:var(--ink); font-size:20px; margin:0 0 16px; }
   .field{ margin-bottom:13px; }
   .field label, .field .label{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-family:var(--font-m); font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-ink); margin-bottom:5px; }
@@ -295,7 +300,9 @@
     </div>
     <div class="controls">
       <label class="liked-filter"><input type="checkbox" id="likedOnly"> <span id="likedOnlyLabel"></span></label>
-      <button class="lang-toggle" id="langToggle">TR / EN</button>
+      <div class="lang-toggle" id="langToggle" role="group" aria-label="Dil / Language / Taal">
+        <button type="button" data-lang="tr">TR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="nl">NL</button>
+      </div>
     </div>
   </header>
 
@@ -335,7 +342,7 @@
 
 <!-- add / edit -->
 <div class="modal-overlay hidden" id="modalOverlay">
-  <form class="modal wide" id="recipeForm">
+  <form class="modal wide form" id="recipeForm">
     <h2 id="modalTitle"></h2>
 
     <div class="field">
@@ -354,6 +361,10 @@
       <div class="field">
         <label for="fTitleEn" id="lblTitleEn"></label>
         <input type="text" id="fTitleEn">
+      </div>
+      <div class="field">
+        <label for="fTitleNl" id="lblTitleNl"></label>
+        <input type="text" id="fTitleNl">
       </div>
     </div>
 
@@ -375,12 +386,16 @@
 
     <div class="field-row">
       <div class="field">
-        <label for="fTextTr"><span id="lblTextTr"></span><button type="button" class="mini-btn" id="trFromEnBtn"></button></label>
+        <label for="fTextTr"><span id="lblTextTr"></span><button type="button" class="mini-btn fill-btn" data-lang="tr"></button></label>
         <textarea id="fTextTr" class="recipe-text"></textarea>
       </div>
       <div class="field">
-        <label for="fTextEn"><span id="lblTextEn"></span><button type="button" class="mini-btn" id="enFromTrBtn"></button></label>
+        <label for="fTextEn"><span id="lblTextEn"></span><button type="button" class="mini-btn fill-btn" data-lang="en"></button></label>
         <textarea id="fTextEn" class="recipe-text"></textarea>
+      </div>
+      <div class="field">
+        <label for="fTextNl"><span id="lblTextNl"></span><button type="button" class="mini-btn fill-btn" data-lang="nl"></button></label>
+        <textarea id="fTextNl" class="recipe-text"></textarea>
       </div>
     </div>
 
@@ -392,6 +407,10 @@
       <div class="field">
         <label for="fNoteEn" id="lblNoteEn"></label>
         <textarea id="fNoteEn"></textarea>
+      </div>
+      <div class="field">
+        <label for="fNoteNl" id="lblNoteNl"></label>
+        <textarea id="fNoteNl"></textarea>
       </div>
     </div>
 
@@ -417,21 +436,27 @@
 
   var LANG_KEY = 'recipebook-lang';
 
+  // Every recipe has title/text/note fields per language: titleTr, titleEn, titleNl, ...
+  var LANGS = ['tr', 'en', 'nl'];
+  var LANG_NAMES = { tr:'Türkçe', en:'English', nl:'Nederlands' };
+  // The language shown in small print under a title or note
+  var SECONDARY = { tr:'en', en:'tr', nl:'tr' };
+
   var CATEGORIES = [
-    { id:'dinner',    tr:'Öğle & Akşam Yemeği', en:'Lunch & Dinner' },
-    { id:'breakfast', tr:'Kahvaltı',            en:'Breakfast' },
-    { id:'snack',     tr:'Ara Öğün',            en:'Snacks' },
-    { id:'dessert',   tr:'Tatlı',               en:'Dessert' },
-    { id:'inbox',     tr:'Gelen Kutusu',        en:'Inbox' }
+    { id:'dinner',    tr:'Öğle & Akşam Yemeği', en:'Lunch & Dinner', nl:'Lunch & diner' },
+    { id:'breakfast', tr:'Kahvaltı',            en:'Breakfast',      nl:'Ontbijt' },
+    { id:'snack',     tr:'Ara Öğün',            en:'Snacks',         nl:'Tussendoortjes' },
+    { id:'dessert',   tr:'Tatlı',               en:'Dessert',        nl:'Toetjes' },
+    { id:'inbox',     tr:'Gelen Kutusu',        en:'Inbox',          nl:'Inbox' }
   ];
 
   var TAGS = {
-    'soup':{tr:'Çorba',en:'Soup'}, 'salad':{tr:'Salata',en:'Salad'}, 'main':{tr:'Ana yemek',en:'Main'},
-    'side':{tr:'Yan lezzet',en:'Side'}, 'vegetarian':{tr:'Vejetaryen',en:'Vegetarian'}, 'vegan':{tr:'Vegan',en:'Vegan'},
-    'meat':{tr:'Etli',en:'Meat'}, 'chicken':{tr:'Tavuk',en:'Chicken'}, 'fish':{tr:'Balık',en:'Fish'},
-    'legumes':{tr:'Baklagil',en:'Legumes'}, 'pastry':{tr:'Hamur işi',en:'Pastry'}, 'rice-grain':{tr:'Pilav & tahıl',en:'Rice & grains'},
-    'pasta':{tr:'Makarna',en:'Pasta'}, 'olive-oil':{tr:'Zeytinyağlı',en:'Olive-oil dish'}, 'quick':{tr:'Pratik',en:'Quick'},
-    'oven':{tr:'Fırında',en:'Oven-baked'}, 'no-cook':{tr:'Pişirmesiz',en:'No-cook'}, 'healthy':{tr:'Sağlıklı',en:'Healthy'}
+    'soup':{tr:'Çorba',en:'Soup',nl:'Soep'}, 'salad':{tr:'Salata',en:'Salad',nl:'Salade'}, 'main':{tr:'Ana yemek',en:'Main',nl:'Hoofdgerecht'},
+    'side':{tr:'Yan lezzet',en:'Side',nl:'Bijgerecht'}, 'vegetarian':{tr:'Vejetaryen',en:'Vegetarian',nl:'Vegetarisch'}, 'vegan':{tr:'Vegan',en:'Vegan',nl:'Veganistisch'},
+    'meat':{tr:'Etli',en:'Meat',nl:'Vlees'}, 'chicken':{tr:'Tavuk',en:'Chicken',nl:'Kip'}, 'fish':{tr:'Balık',en:'Fish',nl:'Vis'},
+    'legumes':{tr:'Baklagil',en:'Legumes',nl:'Peulvruchten'}, 'pastry':{tr:'Hamur işi',en:'Pastry',nl:'Deeg & gebak'}, 'rice-grain':{tr:'Pilav & tahıl',en:'Rice & grains',nl:'Rijst & granen'},
+    'pasta':{tr:'Makarna',en:'Pasta',nl:'Pasta'}, 'olive-oil':{tr:'Zeytinyağlı',en:'Olive-oil dish',nl:'Olijfoliegerecht'}, 'quick':{tr:'Pratik',en:'Quick',nl:'Snel'},
+    'oven':{tr:'Fırında',en:'Oven-baked',nl:'Uit de oven'}, 'no-cook':{tr:'Pişirmesiz',en:'No-cook',nl:'Zonder koken'}, 'healthy':{tr:'Sağlıklı',en:'Healthy',nl:'Gezond'}
   };
 
   var I18N = {
@@ -460,12 +485,12 @@
       emptyLiked:'Favori işaretlediğin tarif yok.',
       inboxInfo:'Henüz dosyalanmamış tarifler. Bir karta tıkla, tarifi kontrol et, sonra Düzenle ile başlığını ve kategorisini seç. Açıklaması okunamayan gönderilerde "Gönderiyi göster" ile metni kopyalayıp "Orijinal açıklama" alanına yapıştırabilirsin.',
       allTags:'Tümü',
-      lblTitleTr:'Başlık (TR)', lblTitleEn:'Başlık (EN)', lblCategory:'Kategori', lblTags:'Etiketler',
-      lblNoteTr:'Not (TR)', lblNoteEn:'Not (EN)', lblLink:'Instagram / kaynak bağlantı',
+      lblTitleTr:'Başlık (TR)', lblTitleEn:'Başlık (EN)', lblTitleNl:'Başlık (NL)', lblCategory:'Kategori', lblTags:'Etiketler',
+      lblNoteTr:'Not (TR)', lblNoteEn:'Not (EN)', lblNoteNl:'Not (NL)', lblLink:'Instagram / kaynak bağlantı',
       linkHint:'Bağlantıyı yapıştır, "Gönderiyi göster"e bas, açıklamadaki tarifi kopyalayıp aşağıya yapıştır.',
       previewPost:'Gönderiyi göster', hidePost:'Gönderiyi gizle',
-      lblCaption:'Orijinal açıklama (Instagram’dan yapıştır)', captionToBoth:'TR + EN’ye aktar',
-      lblTextTr:'Tarif (TR)', lblTextEn:'Tarif (EN)', trFromEn:'EN’den çevir', enFromTr:'TR’den çevir',
+      lblCaption:'Orijinal açıklama (Instagram’dan yapıştır)', captionToAll:'TR + EN + NL’ye aktar',
+      lblTextTr:'Tarif (TR)', lblTextEn:'Tarif (EN)', lblTextNl:'Tarif (NL)', fillTranslate:'Çevir',
       lblFormula:'Bu sabit bir tarif değil, esnek bir menü formülü',
       tagsHint:'virgülle ayır',
       untitled:'Başlıksız kayıt', formula:'Formül', recipe:'Tarif', hasText:'Tarif var',
@@ -515,12 +540,12 @@
       emptyLiked:'No favorites marked yet.',
       inboxInfo:'Recipes that have not been filed yet. Open a card, check the recipe, then use Edit to pick a title and category. For posts whose caption could not be read, use "Show post", copy the text and paste it into "Original caption".',
       allTags:'All',
-      lblTitleTr:'Title (TR)', lblTitleEn:'Title (EN)', lblCategory:'Category', lblTags:'Tags',
-      lblNoteTr:'Note (TR)', lblNoteEn:'Note (EN)', lblLink:'Instagram / source link',
+      lblTitleTr:'Title (TR)', lblTitleEn:'Title (EN)', lblTitleNl:'Title (NL)', lblCategory:'Category', lblTags:'Tags',
+      lblNoteTr:'Note (TR)', lblNoteEn:'Note (EN)', lblNoteNl:'Note (NL)', lblLink:'Instagram / source link',
       linkHint:'Paste the link, press "Show post", then copy the recipe from the caption into the box below.',
       previewPost:'Show post', hidePost:'Hide post',
-      lblCaption:'Original caption (paste from Instagram)', captionToBoth:'Copy to TR + EN',
-      lblTextTr:'Recipe (TR)', lblTextEn:'Recipe (EN)', trFromEn:'Translate from EN', enFromTr:'Translate from TR',
+      lblCaption:'Original caption (paste from Instagram)', captionToAll:'Copy to TR + EN + NL',
+      lblTextTr:'Recipe (TR)', lblTextEn:'Recipe (EN)', lblTextNl:'Recipe (NL)', fillTranslate:'Translate',
       lblFormula:'This is a flexible formula, not a fixed recipe',
       tagsHint:'comma separated',
       untitled:'Untitled entry', formula:'Formula', recipe:'Recipe', hasText:'Has recipe',
@@ -544,12 +569,87 @@
       importDuplicate:'This recipe is already in the archive.',
       saveFailed:'Could not save:',
       sessionExpired:'Session expired. Reload the page to sign in again.'
+    },
+    nl:{
+      titleMain:'Keukenarchief', titleSub:'Mutfak Arşivi',
+      subtitle:'Verzamel de recepten die je bewaart, markeer je favorieten en weet altijd wat je gaat koken.',
+      searchPlaceholder:'Zoek recepten of ingrediënten...',
+      likedOnly:'Alleen favorieten',
+      idea:'Wat zal ik koken?',
+      ideaAgain:'Ander idee',
+      ideaDismiss:'Sluiten',
+      ideaLabel:'Idee',
+      ideaShow:'Recept bekijken',
+      addRecipe:'Recept toevoegen', addByHand:'Zelf toevoegen',
+      editRecipe:'Recept bewerken',
+      edit:'Bewerken',
+      open:'Openen op Instagram',
+      showRecipe:'Recept bekijken',
+      save:'Opslaan',
+      cancel:'Annuleren',
+      close:'Sluiten',
+      delete:'Verwijderen',
+      deleteConfirm:'Dit recept verwijderen?',
+      emptyMsg:'Nog geen recepten in deze categorie. Voeg er hieronder een toe.',
+      emptyBtn:'Eerste recept toevoegen',
+      emptyLiked:'Nog geen favorieten gemarkeerd.',
+      inboxInfo:'Recepten die nog niet zijn ingedeeld. Open een kaart, controleer het recept en kies dan met Bewerken een titel en categorie. Kon het bijschrift van een bericht niet gelezen worden, gebruik dan "Bericht tonen", kopieer de tekst en plak die in "Oorspronkelijk bijschrift".',
+      allTags:'Alle',
+      lblTitleTr:'Titel (TR)', lblTitleEn:'Titel (EN)', lblTitleNl:'Titel (NL)', lblCategory:'Categorie', lblTags:'Labels',
+      lblNoteTr:'Notitie (TR)', lblNoteEn:'Notitie (EN)', lblNoteNl:'Notitie (NL)', lblLink:'Instagram / bronlink',
+      linkHint:'Plak de link, druk op "Bericht tonen" en kopieer het recept uit het bijschrift naar het vak hieronder.',
+      previewPost:'Bericht tonen', hidePost:'Bericht verbergen',
+      lblCaption:'Oorspronkelijk bijschrift (plakken vanaf Instagram)', captionToAll:'Naar TR + EN + NL',
+      lblTextTr:'Recept (TR)', lblTextEn:'Recept (EN)', lblTextNl:'Recept (NL)', fillTranslate:'Vertalen',
+      lblFormula:'Dit is een flexibele formule, geen vast recept',
+      tagsHint:'gescheiden door komma’s',
+      untitled:'Naamloos recept', formula:'Formule', recipe:'Recept', hasText:'Met recept',
+      original:'Origineel',
+      noText:'Nog geen recepttekst in deze taal.',
+      noTextAtAll:'Nog geen recepttekst. Druk op Bewerken en plak het Instagram-bijschrift.',
+      translateNow:'Automatisch vertalen',
+      translating:'Vertalen…',
+      translateFailed:'Automatisch vertalen lukte niet; Google Translate wordt in een nieuw tabblad geopend.',
+      machineNote:'Machinevertaling',
+      toastSaved:'Opgeslagen', toastDeleted:'Verwijderd', toastLiked:'Toegevoegd aan favorieten', toastUnliked:'Verwijderd uit favorieten',
+      toastTranslated:'Vertaald',
+      validationTitle:'Vul in minstens één taal een titel in.',
+      exportBtn:'Back-up downloaden (JSON)',
+      aiOn:'{ai} maakt geïmporteerde recepten netjes op en vertaalt ze.',
+      aiOff:'Eenvoudige import: het bijschrift wordt vertaald, jij kiest de titel en categorie.',
+      importPlaceholder:'Plak een link van Instagram, TikTok, YouTube of een receptensite…',
+      importBtn:'Recept toevoegen', importing:'Toevoegen…',
+      importWorking:'De link wordt gelezen en het recept klaargezet, dit kan even duren…',
+      importDone:'Recept toegevoegd', importInbox:'Recept toegevoegd aan de Inbox; controleer de titel en categorie.',
+      importDuplicate:'Dit recept staat al in het archief.',
+      saveFailed:'Opslaan mislukt:',
+      sessionExpired:'Sessie verlopen. Herlaad de pagina om opnieuw in te loggen.'
     }
   };
 
   function t(key){ return I18N[state.lang][key]; }
-  function other(lang){ return lang === 'tr' ? 'en' : 'tr'; }
-  function cap(lang){ return lang === 'tr' ? 'Tr' : 'En'; }
+  function cap(lang){ return lang.charAt(0).toUpperCase() + lang.slice(1); }
+
+  // The UI language first, then the one shown under it, then the rest.
+  function langOrder(){
+    var order = [state.lang, SECONDARY[state.lang]];
+    return order.concat(LANGS.filter(function(l){ return order.indexOf(l) === -1; }));
+  }
+  // A recipe's title/text/note in the first language that has one.
+  function pick(r, field){
+    var order = langOrder();
+    for(var i = 0; i < order.length; i++){ if(r[field + cap(order[i])]) return r[field + cap(order[i])]; }
+    return '';
+  }
+  // The language to translate a missing text from: the original one when it has text, else the first that does.
+  function sourceLang(hasText, target, orig){
+    var order = [orig].concat(LANGS);
+    for(var i = 0; i < order.length; i++){
+      var l = order[i];
+      if(l && l !== target && LANGS.indexOf(l) !== -1 && hasText(l)) return l;
+    }
+    return null;
+  }
 
   function catLabel(cat){
     var c = CATEGORIES.filter(function(x){return x.id===cat;})[0];
@@ -631,10 +731,14 @@
   }
   function guessLang(text){
     if(/[çğıöşüÇĞİÖŞÜ]/.test(text)) return 'tr';
-    var tr = (text.match(/\b(ve|bir|için|ile|kadar|olarak|tuz|su bardağı|yemek kaşığı)\b/gi) || []).length;
-    var en = (text.match(/\b(and|the|with|for|cup|tbsp|tsp|until|minutes)\b/gi) || []).length;
-    if(tr === 0 && en === 0) return 'auto';
-    return tr >= en ? 'tr' : 'en';
+    var counts = {
+      tr: (text.match(/\b(ve|bir|için|ile|kadar|olarak|tuz|su bardağı|yemek kaşığı)\b/gi) || []).length,
+      en: (text.match(/\b(and|the|with|for|cup|tbsp|tsp|until|minutes)\b/gi) || []).length,
+      // not "en"/"de": those are common Turkish words too
+      nl: (text.match(/\b(het|een|met|voor|van|minuten|eetlepels?|theelepels?|snufje|ongeveer)\b/gi) || []).length
+    };
+    var best = LANGS.reduce(function(a, b){ return counts[b] > counts[a] ? b : a; });
+    return counts[best] ? best : 'auto';
   }
 
   /* ---------- state & helpers ---------- */
@@ -654,17 +758,20 @@
   function getRecipe(id){ return state.recipes.filter(function(r){return r.id===id;})[0]; }
 
   function titles(r){
-    var primary = state.lang==='tr' ? r.titleTr : r.titleEn;
-    var secondary = state.lang==='tr' ? r.titleEn : r.titleTr;
-    if(!primary && secondary){ primary = secondary; secondary=''; }
+    var primary = pick(r, 'title');
+    var secondary = r['title' + cap(SECONDARY[state.lang])] || '';
+    if(secondary === primary) secondary = '';
     if(!primary){ primary = igCode(r.link) ? '📎 ' + igCode(r.link) : t('untitled'); }
     return { primary:primary, secondary:secondary };
   }
 
   function haystack(r){
-    return [r.titleTr, r.titleEn, r.noteTr, r.noteEn, r.textTr, r.textEn, r.caption, r.author,
-      (r.tags||[]).map(function(x){ return TAGS[x] ? TAGS[x].tr + ' ' + TAGS[x].en : x; }).join(' ')
-    ].join(' ').toLocaleLowerCase('tr');
+    var parts = [r.caption, r.author];
+    LANGS.forEach(function(l){ parts.push(r['title' + cap(l)], r['note' + cap(l)], r['text' + cap(l)]); });
+    (r.tags||[]).forEach(function(x){
+      parts.push(TAGS[x] ? LANGS.map(function(l){ return TAGS[x][l]; }).join(' ') : x);
+    });
+    return parts.join(' ').toLocaleLowerCase('tr');
   }
 
   function filteredRecipes(){
@@ -682,6 +789,9 @@
 
   function renderChrome(){
     document.documentElement.lang = state.lang;
+    document.querySelectorAll('#langToggle button').forEach(function(b){
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === state.lang));
+    });
     document.getElementById('pageTitle').innerHTML =
       '<span>' + esc(t('titleMain')) + '</span><span class="en">' + esc(t('titleSub')) + '</span>';
     document.getElementById('pageSubtitle').textContent = t('subtitle');
@@ -689,13 +799,16 @@
     document.getElementById('likedOnlyLabel').textContent = '♥ ' + t('likedOnly');
     document.getElementById('ideaBtn').textContent = '🎲 ' + t('idea');
     document.getElementById('addBtnLabel').textContent = t('addByHand');
-    ['lblTitleTr','lblTitleEn','lblCategory','lblNoteTr','lblNoteEn','lblLink','lblFormula','lblCaption','lblTextTr','lblTextEn','linkHint'].forEach(function(id){
+    var labelIds = ['lblCategory','lblLink','lblFormula','lblCaption','linkHint'];
+    LANGS.forEach(function(l){ labelIds.push('lblTitle' + cap(l), 'lblNote' + cap(l), 'lblText' + cap(l)); });
+    labelIds.forEach(function(id){
       document.getElementById(id).textContent = t(id);
     });
     document.getElementById('lblTags').textContent = t('lblTags') + ' (' + t('tagsHint') + ')';
-    document.getElementById('captionToBothBtn').textContent = '↧ ' + t('captionToBoth');
-    document.getElementById('trFromEnBtn').textContent = '⇄ ' + t('trFromEn');
-    document.getElementById('enFromTrBtn').textContent = '⇄ ' + t('enFromTr');
+    document.getElementById('captionToBothBtn').textContent = '↧ ' + t('captionToAll');
+    document.querySelectorAll('.fill-btn').forEach(function(b){
+      if(!b.disabled) b.textContent = '⇄ ' + t('fillTranslate');
+    });
     document.getElementById('cancelBtn').textContent = t('cancel');
     document.getElementById('saveBtn').textContent = t('save');
     document.getElementById('deleteBtn').textContent = t('delete');
@@ -767,9 +880,10 @@
 
   function cardHtml(r, idx){
     var tt = titles(r);
-    var primaryNote = state.lang==='tr' ? r.noteTr : r.noteEn;
-    var secondaryNote = state.lang==='tr' ? r.noteEn : r.noteTr;
-    var hasText = !!(r.textTr || r.textEn || r.caption);
+    var primaryNote = pick(r, 'note');
+    var secondaryNote = r['note' + cap(SECONDARY[state.lang])] || '';
+    if(secondaryNote === primaryNote) secondaryNote = '';
+    var hasText = !!(r.caption || pick(r, 'text'));
 
     var html = '<div class="card" data-cat="' + esc(r.category) + '" data-id="' + esc(r.id) + '">';
     html += '<div class="accent-bar"></div>';
@@ -781,8 +895,8 @@
     if(hasText) badges += '<span class="badge has-text">📄 ' + esc(t('hasText')) + '</span>';
     (r.tags||[]).slice(0,3).forEach(function(tag){ badges += '<span class="badge">' + esc(tagLabel(tag)) + '</span>'; });
     if(badges) html += '<div class="badge-row">' + badges + '</div>';
-    if(primaryNote || secondaryNote){
-      html += '<div class="card-note">' + esc(primaryNote||'') + (secondaryNote && primaryNote ? '<span class="secondary">'+esc(secondaryNote)+'</span>' : esc(primaryNote ? '' : secondaryNote)) + '</div>';
+    if(primaryNote){
+      html += '<div class="card-note">' + esc(primaryNote) + (secondaryNote ? '<span class="secondary">'+esc(secondaryNote)+'</span>' : '') + '</div>';
     }
     html += '<div class="card-actions">';
     html += '<button class="open-link open-detail" data-id="' + esc(r.id) + '">' + esc(t('showRecipe')) + ' →</button>';
@@ -838,7 +952,7 @@
     if(!r) return;
     detailId = id;
     detailView = state.lang;
-    if(!r['text' + cap(detailView)] && !r['text' + cap(other(detailView))] && r.caption) detailView = 'orig';
+    if(!pick(r, 'text') && r.caption) detailView = 'orig';
     renderDetail();
     document.getElementById('detailOverlay').classList.remove('hidden');
   }
@@ -853,7 +967,7 @@
     var r = getRecipe(detailId);
     if(!r){ closeDetail(); return; }
     var tt = titles(r);
-    var note = state.lang==='tr' ? (r.noteTr || r.noteEn) : (r.noteEn || r.noteTr);
+    var note = pick(r, 'note');
     var text = detailView === 'orig' ? r.caption : r['text' + cap(detailView)];
 
     var html = '<div class="detail-head"><div>';
@@ -867,11 +981,12 @@
     if(badges) html += '<div class="badge-row">' + badges + '</div>';
     if(note) html += '<p class="detail-note">' + esc(note) + '</p>';
 
-    var anyText = r.textTr || r.textEn || r.caption;
+    var anyText = r.caption || pick(r, 'text');
     if(anyText){
       html += '<div class="seg" role="tablist">';
-      html += '<button data-view="tr" class="' + (detailView==='tr'?'active':'') + '">Türkçe</button>';
-      html += '<button data-view="en" class="' + (detailView==='en'?'active':'') + '">English</button>';
+      LANGS.forEach(function(l){
+        html += '<button data-view="' + l + '" class="' + (detailView===l?'active':'') + '">' + esc(LANG_NAMES[l]) + '</button>';
+      });
       if(r.caption) html += '<button data-view="orig" class="' + (detailView==='orig'?'active':'') + '">' + esc(t('original')) + '</button>';
       html += '</div>';
       if(text){
@@ -918,9 +1033,10 @@
     var tb = document.getElementById('detailTranslate');
     if(tb) tb.addEventListener('click', async function(){
       var target = detailView;
-      var srcLang = r['text' + cap(other(target))] ? other(target) : (r.origLang || guessLang(r.caption || ''));
-      if(srcLang !== 'tr' && srcLang !== 'en') srcLang = 'auto';
-      var src = r['text' + cap(other(target))] || r.caption;
+      var srcLang = sourceLang(function(l){ return !!r['text' + cap(l)]; }, target, r.origLang);
+      var src = srcLang ? r['text' + cap(srcLang)] : r.caption;
+      if(!srcLang) srcLang = r.origLang || guessLang(r.caption || '');
+      if(LANGS.indexOf(srcLang) === -1) srcLang = 'auto';
       var fields = {};
       if(srcLang === target){ fields['text' + cap(target)] = src; }
       else {
@@ -930,6 +1046,11 @@
         fields['text' + cap(target)] = out;
         fields.machine = Object.assign({}, r.machine);
         fields.machine[target] = true;
+      }
+      var titleSrc = sourceLang(function(l){ return !!r['title' + cap(l)]; }, target, srcLang);
+      if(!r['title' + cap(target)] && titleSrc){
+        var title = await translate(r['title' + cap(titleSrc)], titleSrc, target);
+        if(title) fields['title' + cap(target)] = title;
       }
       if(!await saveRecipe(r, fields)) return;
       showToast(t('toastTranslated'));
@@ -985,22 +1106,20 @@
     state.editingId = existing ? existing.id : null;
     document.getElementById('modalTitle').textContent = existing ? t('editRecipe') : t('addRecipe');
     var f = function(id, v){ document.getElementById(id).value = v || ''; };
-    f('fTitleTr', existing && existing.titleTr);
-    f('fTitleEn', existing && existing.titleEn);
-    f('fNoteTr', existing && existing.noteTr);
-    f('fNoteEn', existing && existing.noteEn);
+    ['title', 'note', 'text'].forEach(function(field){
+      LANGS.forEach(function(l){ f('f' + cap(field) + cap(l), existing && existing[field + cap(l)]); });
+    });
     f('fLink', existing && existing.link);
     f('fCaption', existing && existing.caption);
-    f('fTextTr', existing && existing.textTr);
-    f('fTextEn', existing && existing.textEn);
     f('fTags', existing && (existing.tags||[]).map(tagLabel).join(', '));
+    formMachine = {};
     var cat = existing && existing.category !== 'inbox' ? existing.category : (state.activeCategory !== 'inbox' ? state.activeCategory : 'dinner');
     document.getElementById('fCategory').value = cat;
     document.getElementById('fFormula').checked = existing ? !!existing.formula : false;
     document.getElementById('deleteBtn').classList.toggle('hidden', !existing);
     setFormEmbed(false);
     document.getElementById('modalOverlay').classList.remove('hidden');
-    document.getElementById(existing ? 'fTitleTr' : 'fLink').focus();
+    document.getElementById(existing ? 'fTitle' + cap(state.lang) : 'fLink').focus();
   }
 
   function closeModal(){
@@ -1013,8 +1132,7 @@
     var byLabel = {};
     Object.keys(TAGS).forEach(function(k){
       byLabel[k] = k;
-      byLabel[TAGS[k].tr.toLocaleLowerCase('tr')] = k;
-      byLabel[TAGS[k].en.toLocaleLowerCase('tr')] = k;
+      LANGS.forEach(function(l){ byLabel[TAGS[k][l].toLocaleLowerCase('tr')] = k; });
     });
     return s.split(',').map(function(x){ return x.trim(); }).filter(Boolean).map(function(x){
       return byLabel[x.toLocaleLowerCase('tr')] || x;
@@ -1035,40 +1153,57 @@
   }
   var formMachine = {};
 
-  async function captionToBoth(){
+  // Fill one language's recipe text by translating the best other text in the form (or the caption).
+  function fillField(btn){
+    var target = btn.getAttribute('data-lang');
+    var val = function(id){ return document.getElementById(id).value.trim(); };
+    var r = state.editingId ? getRecipe(state.editingId) : null;
+    var capText = val('fCaption');
+    var orig = (r && r.origLang) || (capText ? guessLang(capText) : null);
+    var src = sourceLang(function(l){ return !!val('fText' + cap(l)); }, target, orig);
+    if(src) return fillByTranslation(btn, 'fText' + cap(src), src, 'fText' + cap(target), target);
+    if(capText) return fillByTranslation(btn, 'fCaption', LANGS.indexOf(orig) !== -1 ? orig : 'auto', 'fText' + cap(target), target);
+  }
+
+  async function captionToAll(){
     var capText = document.getElementById('fCaption').value.trim();
     if(!capText) return;
     var lang = guessLang(capText);
-    var same = 'fText' + cap(lang), otherId = 'fText' + cap(other(lang));
-    if(!document.getElementById(same).value.trim()) document.getElementById(same).value = capText;
-    if(!document.getElementById(otherId).value.trim()){
-      await fillByTranslation(document.getElementById('captionToBothBtn'), 'fCaption', lang, otherId, other(lang));
+    var btn = document.getElementById('captionToBothBtn');
+    if(LANGS.indexOf(lang) !== -1 && !document.getElementById('fText' + cap(lang)).value.trim()){
+      document.getElementById('fText' + cap(lang)).value = capText;
+    }
+    for(var i = 0; i < LANGS.length; i++){
+      var l = LANGS[i];
+      if(l !== lang && !document.getElementById('fText' + cap(l)).value.trim()){
+        await fillByTranslation(btn, 'fCaption', lang, 'fText' + cap(l), l);
+      }
     }
   }
 
   async function handleSubmit(e){
     e.preventDefault();
     var v = function(id){ return document.getElementById(id).value.trim(); };
-    var titleTr = v('fTitleTr'), titleEn = v('fTitleEn');
-    if(!titleTr && !titleEn){
-      alert(t('validationTitle'));
-      return;
-    }
     var data = {
-      titleTr:titleTr, titleEn:titleEn,
       category:document.getElementById('fCategory').value,
-      noteTr:v('fNoteTr'), noteEn:v('fNoteEn'),
       link:v('fLink'),
       caption:v('fCaption'),
-      textTr:v('fTextTr'), textEn:v('fTextEn'),
       tags:parseTags(document.getElementById('fTags').value),
       formula:document.getElementById('fFormula').checked
     };
+    ['title', 'note', 'text'].forEach(function(field){
+      LANGS.forEach(function(l){ data[field + cap(l)] = v('f' + cap(field) + cap(l)); });
+    });
+    if(!LANGS.some(function(l){ return data['title' + cap(l)]; })){
+      alert(t('validationTitle'));
+      return;
+    }
     var r = state.editingId ? getRecipe(state.editingId) : null;
     if(data.caption && !(r && r.origLang)) data.origLang = guessLang(data.caption);
     var machine = Object.assign({}, r && r.machine);
-    if(r && data.textTr !== r.textTr) delete machine.tr;
-    if(r && data.textEn !== r.textEn) delete machine.en;
+    LANGS.forEach(function(l){
+      if(r && data['text' + cap(l)] !== (r['text' + cap(l)] || '')) delete machine[l];
+    });
     Object.keys(formMachine).forEach(function(k){ machine[k] = true; });
     data.machine = machine;
     var saveBtn = document.getElementById('saveBtn');
@@ -1105,7 +1240,7 @@
   /* ---------- meal ideas ---------- */
 
   function pickIdea(){
-    var named = function(r){ return r.category !== 'inbox' && (r.titleTr || r.titleEn); };
+    var named = function(r){ return r.category !== 'inbox' && pick(r, 'title'); };
     var pool = state.recipes.filter(function(r){
       return named(r) && r.id !== currentIdeaId &&
         (state.activeCategory === 'inbox' || r.category === state.activeCategory) &&
@@ -1126,7 +1261,7 @@
     if(!r){ slot.innerHTML = ''; currentIdeaId = null; return; }
     currentIdeaId = r.id;
     var tt = titles(r);
-    var note = state.lang==='tr' ? r.noteTr : r.noteEn;
+    var note = pick(r, 'note');
     var html = '<div class="idea-callout">';
     html += '<div><p class="idea-label">' + esc(t('ideaLabel')) + ' · ' + esc(catLabel(r.category)) + (r.liked ? ' · ♥' : '') + '</p>';
     html += '<p class="idea-title">' + esc(tt.primary) + (tt.secondary?'<span class="en">'+esc(tt.secondary)+'</span>':'') + '</p>';
@@ -1187,12 +1322,15 @@
   /* ---------- wiring ---------- */
 
   function wireStaticEvents(){
-    document.getElementById('langToggle').addEventListener('click', async function(){
-      state.lang = other(state.lang);
-      saveLang();
-      renderAll();
-      if(currentIdeaId) renderIdea();
-      if(detailId){ detailView = state.lang; renderDetail(); }
+    document.querySelectorAll('#langToggle button').forEach(function(b){
+      b.addEventListener('click', function(){
+        if(state.lang === b.getAttribute('data-lang')) return;
+        state.lang = b.getAttribute('data-lang');
+        saveLang();
+        renderAll();
+        if(currentIdeaId) renderIdea();
+        if(detailId){ detailView = state.lang; renderDetail(); }
+      });
     });
     document.getElementById('likedOnly').addEventListener('change', function(e){
       state.likedOnly = e.target.checked;
@@ -1210,9 +1348,10 @@
     document.getElementById('previewPostBtn').addEventListener('click', function(){
       setFormEmbed(document.getElementById('formEmbed').classList.contains('hidden'));
     });
-    document.getElementById('captionToBothBtn').addEventListener('click', captionToBoth);
-    document.getElementById('trFromEnBtn').addEventListener('click', function(e){ fillByTranslation(e.currentTarget, 'fTextEn', 'en', 'fTextTr', 'tr'); });
-    document.getElementById('enFromTrBtn').addEventListener('click', function(e){ fillByTranslation(e.currentTarget, 'fTextTr', 'tr', 'fTextEn', 'en'); });
+    document.getElementById('captionToBothBtn').addEventListener('click', captionToAll);
+    document.querySelectorAll('.fill-btn').forEach(function(b){
+      b.addEventListener('click', function(){ fillField(b); });
+    });
     document.getElementById('importForm').addEventListener('submit', importLink);
     document.getElementById('modalOverlay').addEventListener('click', function(e){
       if(e.target === e.currentTarget) closeModal();
@@ -1228,12 +1367,12 @@
   async function init(){
     try{ state.lang = localStorage.getItem(LANG_KEY) || 'tr'; }catch(e){}
     if(!I18N[state.lang]) state.lang = 'tr';
-    document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Yükleniyor / Loading…</p></div>';
+    document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Yükleniyor / Loading / Laden…</p></div>';
     wireStaticEvents();
     try{
       await loadData();
     }catch(e){
-      document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Sunucuya ulaşılamadı / Could not reach the server: ' + esc(e.message) + '</p></div>';
+      document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Sunucuya ulaşılamadı / Could not reach the server / Server niet bereikbaar: ' + esc(e.message) + '</p></div>';
       renderChrome();
       return;
     }

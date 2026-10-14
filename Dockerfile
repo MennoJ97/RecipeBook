@@ -2,7 +2,7 @@ FROM python:3.13-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY server.py importer.py processing.py ./
+COPY server.py importer.py processing.py backfill.py ./
 COPY static ./static
 # Run as an unprivileged user. A bind-mounted data directory must be writable by
 # this uid on the host: chown -R 1000:1000 <data dir>
