@@ -83,6 +83,13 @@
   .import-btn:disabled{ opacity:0.6; cursor:wait; }
   .import-status{ font-size:13px; color:var(--cream); margin:0 0 14px; line-height:1.4; }
   .import-status.error{ color:#f0a493; }
+  .paste-toggle{
+    background:none; border:none; padding:0; margin:-6px 0 14px; color:var(--cream); opacity:0.75;
+    font-size:13px; text-decoration:underline; cursor:pointer;
+  }
+  .paste-toggle:hover{ opacity:1; }
+  .paste-box{ display:flex; flex-direction:column; align-items:flex-end; gap:10px; margin-bottom:14px; }
+  .paste-text{ width:100%; box-sizing:border-box; min-height:140px; resize:vertical; font-family:inherit; line-height:1.45; }
   .toolbar{ display:flex; gap:10px; margin:18px 0 22px; flex-wrap:wrap; }
   .search-input{
     flex:1; min-width:200px; background:var(--bg-2); border:1px solid rgba(241,234,214,0.2);
@@ -311,6 +318,11 @@
     <button type="submit" class="import-btn" id="importSubmit"></button>
   </form>
   <p class="import-status hidden" id="importStatus"></p>
+  <button type="button" class="paste-toggle" id="pasteToggle"></button>
+  <form class="paste-box hidden" id="pasteForm">
+    <textarea class="import-input paste-text" id="pasteText" rows="7" required></textarea>
+    <button type="submit" class="import-btn" id="pasteSubmit"></button>
+  </form>
 
   <div class="toolbar">
     <input type="text" class="search-input" id="searchInput">
@@ -473,7 +485,7 @@
       addRecipe:'Tarif Ekle', addByHand:'Elle ekle',
       editRecipe:'Tarifi Düzenle',
       edit:'Düzenle',
-      open:'Instagram’da aç',
+      open:'Instagram’da aç', openAt:'Kaynağı aç ({site})',
       showRecipe:'Tarifi gör',
       save:'Kaydet',
       cancel:'Vazgeç',
@@ -509,6 +521,8 @@
       aiOff:'Basit içe aktarma: açıklama çevrilir, başlık ve kategoriyi sen seçersin.',
       importPlaceholder:'Instagram, TikTok, YouTube ya da tarif sitesi bağlantısı yapıştır…',
       importBtn:'Tarifi ekle', importing:'Ekleniyor…',
+      pasteToggle:'Site açılmıyor mu? Tarif metnini yapıştır', pasteBtn:'Metinden tarif ekle',
+      pastePlaceholder:'Tarifin metnini buraya yapıştır (malzemeler ve yapılışı). Yukarıdaki bağlantı kaynak olarak saklanır.',
       importWorking:'Bağlantı okunuyor ve tarif hazırlanıyor, bu biraz sürebilir…',
       importDone:'Tarif eklendi', importInbox:'Tarif Gelen Kutusu’na eklendi; başlığını ve kategorisini kontrol et.',
       importDuplicate:'Bu tarif zaten arşivde.',
@@ -528,7 +542,7 @@
       addRecipe:'Add recipe', addByHand:'Add by hand',
       editRecipe:'Edit recipe',
       edit:'Edit',
-      open:'Open on Instagram',
+      open:'Open on Instagram', openAt:'Open on {site}',
       showRecipe:'Show recipe',
       save:'Save',
       cancel:'Cancel',
@@ -564,6 +578,8 @@
       aiOff:'Basic import: the caption gets translated, you pick the title and category.',
       importPlaceholder:'Paste an Instagram, TikTok, YouTube or recipe website link…',
       importBtn:'Add recipe', importing:'Adding…',
+      pasteToggle:'Site won’t load? Paste the recipe text', pasteBtn:'Add recipe from text',
+      pastePlaceholder:'Paste the recipe text here (ingredients and method). The link above is kept as the source.',
       importWorking:'Reading the link and preparing the recipe, this can take a moment…',
       importDone:'Recipe added', importInbox:'Recipe added to the Inbox; check its title and category.',
       importDuplicate:'This recipe is already in the archive.',
@@ -583,7 +599,7 @@
       addRecipe:'Recept toevoegen', addByHand:'Zelf toevoegen',
       editRecipe:'Recept bewerken',
       edit:'Bewerken',
-      open:'Openen op Instagram',
+      open:'Openen op Instagram', openAt:'Openen op {site}',
       showRecipe:'Recept bekijken',
       save:'Opslaan',
       cancel:'Annuleren',
@@ -619,6 +635,8 @@
       aiOff:'Eenvoudige import: het bijschrift wordt vertaald, jij kiest de titel en categorie.',
       importPlaceholder:'Plak een link van Instagram, TikTok, YouTube of een receptensite…',
       importBtn:'Recept toevoegen', importing:'Toevoegen…',
+      pasteToggle:'Laadt de site niet? Plak de recepttekst', pasteBtn:'Recept toevoegen uit tekst',
+      pastePlaceholder:'Plak hier de tekst van het recept (ingrediënten en bereiding). De link hierboven blijft bewaard als bron.',
       importWorking:'De link wordt gelezen en het recept klaargezet, dit kan even duren…',
       importDone:'Recept toegevoegd', importInbox:'Recept toegevoegd aan de Inbox; controleer de titel en categorie.',
       importDuplicate:'Dit recept staat al in het archief.',
@@ -755,6 +773,13 @@
     showToast._t = setTimeout(function(){ el.classList.add('hidden'); }, 2200);
   }
 
+  function openLabel(r){
+    var site = { tiktok:'TikTok', youtube:'YouTube' }[r.platform];
+    if(!site && /instagram\.com/.test(r.link)) return t('open');
+    if(!site){ try{ site = new URL(r.link).hostname.replace(/^www\./, ''); }catch(e){ return t('open'); } }
+    return t('openAt').replace('{site}', site);
+  }
+
   function getRecipe(id){ return state.recipes.filter(function(r){return r.id===id;})[0]; }
 
   function titles(r){
@@ -816,6 +841,9 @@
     document.getElementById('aiNote').textContent = state.ai ? t('aiOn').replace('{ai}', state.ai) : t('aiOff');
     document.getElementById('importInput').placeholder = t('importPlaceholder');
     if(!importBusy) document.getElementById('importSubmit').textContent = '+ ' + t('importBtn');
+    if(!importBusy) document.getElementById('pasteSubmit').textContent = '+ ' + t('pasteBtn');
+    document.getElementById('pasteToggle').textContent = t('pasteToggle');
+    document.getElementById('pasteText').placeholder = t('pastePlaceholder');
     var embedShown = !document.getElementById('formEmbed').classList.contains('hidden');
     document.getElementById('previewPostBtn').textContent = '▶ ' + t(embedShown ? 'hidePost' : 'previewPost');
 
@@ -901,7 +929,7 @@
     html += '<div class="card-actions">';
     html += '<button class="open-link open-detail" data-id="' + esc(r.id) + '">' + esc(t('showRecipe')) + ' →</button>';
     html += '<div class="icon-btns">';
-    if(r.link) html += '<a class="icon-btn" href="'+esc(r.link)+'" target="_blank" rel="noopener" aria-label="' + esc(t('open')) + '" title="' + esc(t('open')) + '">↗</a>';
+    if(r.link) html += '<a class="icon-btn" href="'+esc(r.link)+'" target="_blank" rel="noopener" aria-label="' + esc(openLabel(r)) + '" title="' + esc(openLabel(r)) + '">↗</a>';
     html += '<button class="icon-btn edit-btn" data-id="'+esc(r.id)+'" aria-label="edit">✎</button><button class="icon-btn del-btn" data-id="'+esc(r.id)+'" aria-label="delete">🗑</button></div>';
     html += '</div></div>';
     return html;
@@ -1006,7 +1034,7 @@
     html += '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
     if(r.link){
       if(igCode(r.link)) html += '<button class="btn-secondary" id="detailEmbedBtn">▶ ' + esc(t('previewPost')) + '</button>';
-      html += '<a class="btn-secondary" href="' + esc(r.link) + '" target="_blank" rel="noopener">' + esc(t('open')) + ' ↗</a>';
+      html += '<a class="btn-secondary" href="' + esc(r.link) + '" target="_blank" rel="noopener">' + esc(openLabel(r)) + ' ↗</a>';
     }
     html += '</div><div style="display:flex; gap:8px; margin-left:auto;">';
     html += '<button class="btn-secondary" id="detailEdit">✎ ' + esc(t('edit')) + '</button>';
@@ -1290,21 +1318,25 @@
     el.classList.toggle('error', !!isError);
   }
 
-  async function importLink(e){
-    e.preventDefault();
-    var input = document.getElementById('importInput');
-    var btn = document.getElementById('importSubmit');
-    var url = input.value.trim();
-    if(!url || importBusy) return;
+  function showPasteBox(show){
+    document.getElementById('pasteForm').classList.toggle('hidden', !show);
+    document.getElementById('pasteToggle').classList.toggle('hidden', show);
+  }
+
+  // body is {url} for a link, or {url, text} for recipe text pasted from a site that blocks us.
+  async function runImport(body, btn, label){
+    if(importBusy) return;
     importBusy = true;
     btn.disabled = true;
     btn.textContent = t('importing');
     setImportStatus(t('importWorking'));
     try{
-      var data = await api('POST', '/api/import', { url:url });
+      var data = await api('POST', '/api/import', body);
       var r = data.recipe, known = getRecipe(r.id);
       if(known) Object.assign(known, r); else state.recipes.push(r);
-      input.value = '';
+      document.getElementById('importInput').value = '';
+      document.getElementById('pasteText').value = '';
+      showPasteBox(false);
       setImportStatus(data.duplicate ? t('importDuplicate') : (r.category === 'inbox' ? t('importInbox') : t('importDone')));
       state.activeCategory = r.category;
       state.activeTag = null;
@@ -1312,11 +1344,25 @@
       openDetail(r.id);
     }catch(err){
       setImportStatus(err.message, true);
+      if(!body.text) showPasteBox(true);  // whatever went wrong, the text itself still gets the recipe in
     }finally{
       importBusy = false;
       btn.disabled = false;
-      btn.textContent = '+ ' + t('importBtn');
+      btn.textContent = '+ ' + t(label);
     }
+  }
+
+  function importLink(e){
+    e.preventDefault();
+    var url = document.getElementById('importInput').value.trim();
+    if(url) runImport({ url:url }, document.getElementById('importSubmit'), 'importBtn');
+  }
+
+  function importText(e){
+    e.preventDefault();
+    var text = document.getElementById('pasteText').value.trim();
+    var url = document.getElementById('importInput').value.trim();
+    if(text) runImport({ url:url, text:text }, document.getElementById('pasteSubmit'), 'pasteBtn');
   }
 
   /* ---------- wiring ---------- */
@@ -1353,6 +1399,11 @@
       b.addEventListener('click', function(){ fillField(b); });
     });
     document.getElementById('importForm').addEventListener('submit', importLink);
+    document.getElementById('pasteForm').addEventListener('submit', importText);
+    document.getElementById('pasteToggle').addEventListener('click', function(){
+      showPasteBox(true);
+      document.getElementById('pasteText').focus();
+    });
     document.getElementById('modalOverlay').addEventListener('click', function(e){
       if(e.target === e.currentTarget) closeModal();
     });

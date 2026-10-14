@@ -1,11 +1,12 @@
 """Turn a pasted link into recipe text.
 
 Supported sources:
-  * Instagram posts/reels  - caption via the public embed page (no login needed)
+  * Instagram posts/reels  - caption from the post page's preview tags (no login needed)
   * TikTok videos          - caption via TikTok's public oEmbed endpoint
   * YouTube videos/shorts  - video description
-  * Recipe websites        - schema.org Recipe data (JSON-LD), falling back to
-                             the page's title/description
+  * Recipe websites, blogs - schema.org Recipe data (JSON-LD), falling back to
+                             the article text (or the page's description)
+  * Pasted text            - for sites that block us (Allerhande's bot check, ...)
 
 CLI, for testing a link without the server:
     python importer.py https://www.instagram.com/reel/XXXX/
@@ -22,6 +23,9 @@ import urllib.request
 
 BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
+# Recipe sites: Cloudflare turns away a "Chrome" that isn't one, but lets a bot that says what it is through.
+SITE_UA = "Mozilla/5.0 (compatible; RecipeBox/1.0; personal recipe archive)"
+MAX_TEXT = 12000  # characters of article text handed on when a page has no recipe data
 MAX_BYTES = 5 * 1024 * 1024
 TIMEOUT = 25
 
@@ -30,7 +34,19 @@ YOUTUBE_RE = re.compile(r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|shorts/|embed/)|y
 
 
 class ImportError_(Exception):
-    """A link could not be turned into recipe text; the message is shown to the user."""
+    """A link could not be turned into recipe text; the message is shown to the user.
+
+    blocked: the website refused us, so pasting the recipe text by hand is the way in.
+    """
+
+    def __init__(self, message, status=None, blocked=False):
+        super().__init__(message)
+        self.status = status
+        self.blocked = blocked
+
+
+BLOCKED_MESSAGE = ("This website does not let Recipe Box read its pages. Open the recipe, copy its text "
+                   "and paste it here instead.")
 
 
 # ---------- safe fetching ----------
@@ -72,7 +88,9 @@ def fetch(url, headers=None):
             data = resp.read(MAX_BYTES + 1)
             charset = resp.headers.get_content_charset() or "utf-8"
     except urllib.error.HTTPError as e:
-        raise ImportError_(f"The website answered with an error ({e.code}).")
+        if e.code in (401, 403, 429):
+            raise ImportError_(BLOCKED_MESSAGE, e.code, blocked=True)
+        raise ImportError_(f"The website answered with an error ({e.code}).", e.code)
     except (urllib.error.URLError, TimeoutError, socket.timeout) as e:
         raise ImportError_(f"Could not reach the website ({getattr(e, 'reason', e)}).")
     return data[:MAX_BYTES].decode(charset, "replace")
@@ -85,9 +103,9 @@ def _strip_tags(fragment):
 
 
 def _meta(page, name):
-    m = re.search(r'<meta[^>]+(?:property|name)=["\']%s["\'][^>]+content=["\']([^"\']*)' % re.escape(name), page, re.I) \
-        or re.search(r'<meta[^>]+content=["\']([^"\']*)["\'][^>]+(?:property|name)=["\']%s["\']' % re.escape(name), page, re.I)
-    return html.unescape(m.group(1)).strip() if m else ""
+    m = re.search(r'<meta[^>]+(?:property|name)=["\']%s["\'][^>]+content=(["\'])(.*?)\1' % re.escape(name), page, re.I | re.S) \
+        or re.search(r'<meta[^>]+content=(["\'])(.*?)\1[^>]+(?:property|name)=["\']%s["\']' % re.escape(name), page, re.I | re.S)
+    return html.unescape(m.group(2)).strip() if m else ""
 
 
 # ---------- sources ----------
@@ -191,8 +209,52 @@ def _instructions(node):
     return []
 
 
+# Pages a bot check puts in front of the real one (Cloudflare, Akamai, DataDome, PerimeterX).
+CHALLENGE_RE = re.compile(r"cf-chl-|<title>Just a moment|sec-if-cpt-container|<title>Access Denied</title>"
+                          r"|captcha-delivery\.com|px-captcha", re.I)
+NOISE_RE = re.compile(r"<(script|style|noscript|svg|template|iframe|nav|header|footer|aside|form|button|select)\b.*?</\1\s*>",
+                      re.S | re.I)
+
+
+def _site_page(url):
+    try:
+        page = fetch(url, headers={"User-Agent": SITE_UA})
+    except ImportError_ as e:
+        if not e.blocked:
+            raise
+        page = fetch(url)  # a few sites only turn away bots they don't know
+    if "application/ld+json" not in page and CHALLENGE_RE.search(page[:50000]):
+        raise ImportError_(BLOCKED_MESSAGE, blocked=True)
+    return page
+
+
+def _article_text(page):
+    """Readable text of a blog post without recipe data: the <article> (or <main>), minus menus and scripts."""
+    body = NOISE_RE.sub(" ", re.sub(r"<!--.*?-->", "", page, flags=re.S))
+    for tag in ("article", "main", "body"):
+        m = re.search(r"<%s\b[^>]*>(.*)</%s>" % (tag, tag), body, re.S | re.I)
+        if m:
+            body = m.group(1)
+            break
+    body = re.sub(r"<li\b[^>]*>", "\n- ", body, flags=re.I)
+    body = re.sub(r"</(section|tr|h\d|ul|ol|figure|blockquote)>", "\n", body, flags=re.I)
+    lines, seen = [], set()
+    for line in _strip_tags(body).split("\n"):
+        line = re.sub(r"[ \t\xa0]+", " ", line).strip()
+        if line == "-" or (len(line) > 40 and line in seen):  # "read more" blocks repeat the intro
+            continue
+        seen.add(line)
+        if not line and lines and lines[-1].startswith("- "):
+            continue  # keep list items together
+        lines.append(line)
+    text = re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
+    if len(text) > MAX_TEXT:
+        text = text[:text.rfind("\n", 0, MAX_TEXT) + 1 or MAX_TEXT].rstrip()
+    return text.strip()
+
+
 def from_website(url):
-    page = fetch(url)
+    page = _site_page(url)
     for block in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', page, re.S | re.I):
         try:
             recipe = _find_recipe(json.loads(block.strip()))
@@ -213,12 +275,33 @@ def from_website(url):
                 author = author.get("name", "")
             return {"platform": "web", "link": url, "author": author or urllib.parse.urlsplit(url).hostname,
                     "title": _strip_tags(recipe.get("name") or ""), "text": "\n\n".join(p for p in parts if p)}
+    # A blog without recipe data: hand on the post itself, the model picks the recipe out of it.
     description = _meta(page, "og:description") or _meta(page, "description")
     title = _meta(page, "og:title") or _strip_tags((re.search(r"<title>(.*?)</title>", page, re.S | re.I) or [None, ""])[1])
-    if not description and not title:
+    article = _article_text(page)
+    text = article if len(article) > max(200, len(description)) else description
+    if not text and not title:
         raise ImportError_("No recipe found on this page.")
     return {"platform": "web", "link": url, "author": urllib.parse.urlsplit(url).hostname,
-            "title": title, "text": description}
+            "title": title, "text": text}
+
+
+def from_text(url, text):
+    """Recipe text the user pasted, for a website that does not let us read it."""
+    url = (url or "").strip()
+    if url and not re.match(r"https?://", url):
+        url = "https://" + url
+    host = urllib.parse.urlsplit(url).hostname or ""
+    if instagram_code(url):
+        platform = "instagram"
+    elif host.endswith("tiktok.com"):
+        platform = "tiktok"
+    elif YOUTUBE_RE.search(url):
+        platform = "youtube"
+    else:
+        platform = "web"
+    return {"platform": platform, "link": url, "author": host.removeprefix("www.") if platform == "web" else "",
+            "title": "", "text": text.strip()[:MAX_TEXT * 2]}
 
 
 def fetch_source(url):
