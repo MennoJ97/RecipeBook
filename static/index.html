@@ -742,8 +742,16 @@
     }
   }
 
+  // The chosen language lives in a cookie for a year; older versions kept it in localStorage.
+  function loadLang(){
+    var m = document.cookie.match(new RegExp('(?:^|; )' + LANG_KEY + '=([^;]*)'));
+    if(m) return decodeURIComponent(m[1]);
+    try{ return localStorage.getItem(LANG_KEY); }catch(e){ return null; }
+  }
   function saveLang(){
-    try{ localStorage.setItem(LANG_KEY, state.lang); }catch(e){}
+    document.cookie = LANG_KEY + '=' + encodeURIComponent(state.lang) + '; Path=/; Max-Age=31536000; SameSite=Lax' +
+      (location.protocol === 'https:' ? '; Secure' : '');
+    try{ localStorage.removeItem(LANG_KEY); }catch(e){}
   }
 
   /* ---------- translation (done by the server) ---------- */
@@ -1429,8 +1437,9 @@
   }
 
   async function init(){
-    try{ state.lang = localStorage.getItem(LANG_KEY) || 'tr'; }catch(e){}
+    state.lang = loadLang() || 'tr';
     if(!I18N[state.lang]) state.lang = 'tr';
+    saveLang();
     document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Ocak yanıyor · De pan staat op het vuur · Heating the pan…</p></div>';
     wireStaticEvents();
     try{
