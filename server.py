@@ -214,17 +214,18 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(HTTPStatus.BAD_REQUEST, "invalid JSON")
 
         if path == "/api/import":
-            url = str(body.get("url") or "").strip()
-            if not url:
+            # "text" is the recipe pasted by hand, for websites that do not let us read them.
+            url, text = str(body.get("url") or "").strip(), str(body.get("text") or "").strip()
+            if not url and not text:
                 return self._error(HTTPStatus.BAD_REQUEST, "No link given.")
-            existing = store.find_link(url)
+            existing = store.find_link(url) if url else None
             if existing and has_text(existing):
                 return self._send(HTTPStatus.OK, {"recipe": existing, "duplicate": True})
             try:
-                source = importer.fetch_source(url)
+                source = importer.from_text(url, text) if text else importer.fetch_source(url)
             except importer.ImportError_ as e:
                 return self._error(HTTPStatus.UNPROCESSABLE_ENTITY, str(e))
-            existing = existing or store.find_link(source["link"])
+            existing = existing or (store.find_link(source["link"]) if source["link"] else None)
             if existing and has_text(existing):
                 return self._send(HTTPStatus.OK, {"recipe": existing, "duplicate": True})
             fields = processing.build_recipe(source)
