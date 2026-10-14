@@ -1,4 +1,4 @@
-"""Recipe Box server: serves the page and stores recipes in data/recipes.json.
+"""Çok Lekker server: serves the page and stores recipes in data/recipes.json.
 
     python server.py                      # http://127.0.0.1:8080, this computer only
     python server.py --host 0.0.0.0       # reachable from phones on the home network
@@ -145,7 +145,7 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 pass
         self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="Recipe Box", charset="UTF-8"')
+        self.send_header("WWW-Authenticate", 'Basic realm="Cok Lekker", charset="UTF-8"')
         self.send_header("Content-Length", "0")
         self.end_headers()
         return False
@@ -286,7 +286,7 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     store = Store(DB_FILE)
-    log.info("Recipe Box: %d recipes, imports via %s", len(store.recipes),
+    log.info("Çok Lekker: %d recipes, imports via %s", len(store.recipes),
              processing.ai_name() or "basic translation (no model configured)")
     processing.check_llm()
     if args.host not in ("127.0.0.1", "localhost") and not PASSWORD:

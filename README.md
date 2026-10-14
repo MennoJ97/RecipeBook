@@ -1,10 +1,13 @@
-# Tarif Kutusu · Recipe Box
+# Çok Lekker
+
+*Çok lekker* is Turkish *çok* (very) with Dutch *lekker* (tasty): "very tasty", mixed the way
+Dutch-Turkish speakers mix the two languages.
 
 A small recipe archive in Turkish, English and Dutch. Paste a link to an Instagram reel or post,
 a TikTok, a YouTube video or a recipe website, and the server reads the recipe from the
 caption or page and saves it. Recipes have favorites (♥), categories (lunch & dinner,
-breakfast, snacks, dessert, plus an Inbox for unsorted ones), tags, search, and a
-"What should I cook?" button that suggests something, with favorites suggested more often.
+breakfast, snacks, dessert, plus a Counter (the `inbox` category) for unsorted ones), tags, search, and a
+"What’s cooking?" button that suggests something, with favorites suggested more often.
 
 ## Run it
 
@@ -40,7 +43,7 @@ docker run -d -p 8080:8080 -v ./data:/data -e RECIPEBOOK_PASSWORD=choose-somethi
 ## Better imports with a language model (optional)
 
 Without one, an imported caption is machine-translated (Google Translate's free endpoint,
-then MyMemory as a fallback) and the recipe goes to the Inbox, where you pick its title and
+then MyMemory as a fallback) and the recipe goes to the Counter, where you pick its title and
 category with Edit.
 
 With a model, each import is rewritten into a clean "Ingredients / Method" recipe in all three
@@ -75,7 +78,7 @@ ANTHROPIC_API_KEY=sk-ant-... python server.py
 
 The server log says at startup which model imports use and, for Gemini and the like, whether
 the key and model were accepted. If a model fails on an import (a used-up free quota, say),
-that recipe falls back to the translated Inbox import, so imports never stop working.
+that recipe falls back to the translated Counter import, so imports never stop working.
 
 ## Adding a language to existing recipes
 
