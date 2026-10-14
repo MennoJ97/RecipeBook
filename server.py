@@ -158,6 +158,12 @@ class Handler(BaseHTTPRequestHandler):
     def _error(self, status, message):
         self._send(status, {"error": message})
 
+    def _is_json(self):
+        # Another site can make the browser post here with the login cookie attached,
+        # but only as a form or text/plain body: a JSON body needs a CORS preflight,
+        # which this server never answers. So writes must be JSON.
+        return self.headers.get_content_type() == "application/json"
+
     def _body(self):
         length = int(self.headers.get("Content-Length") or 0)
         if length > 2_000_000:
@@ -193,6 +199,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._authorized():
             return
+        if not self._is_json():
+            return self._error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "expected application/json")
         path = self.path.split("?")[0]
         try:
             body = self._body()
@@ -233,6 +241,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_PUT(self):
         if not self._authorized():
             return
+        if not self._is_json():
+            return self._error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "expected application/json")
         rid = self._recipe_id()
         if not rid:
             return self._error(HTTPStatus.NOT_FOUND, "not found")

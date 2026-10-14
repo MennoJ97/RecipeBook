@@ -487,7 +487,8 @@
       importWorking:'Bağlantı okunuyor ve tarif hazırlanıyor, bu biraz sürebilir…',
       importDone:'Tarif eklendi', importInbox:'Tarif Gelen Kutusu’na eklendi; başlığını ve kategorisini kontrol et.',
       importDuplicate:'Bu tarif zaten arşivde.',
-      saveFailed:'Kaydedilemedi:'
+      saveFailed:'Kaydedilemedi:',
+      sessionExpired:'Oturum sona erdi. Yeniden giriş için sayfayı yenile.'
     },
     en:{
       titleMain:'Kitchen Archive', titleSub:'Mutfak Arşivi',
@@ -541,7 +542,8 @@
       importWorking:'Reading the link and preparing the recipe, this can take a moment…',
       importDone:'Recipe added', importInbox:'Recipe added to the Inbox; check its title and category.',
       importDuplicate:'This recipe is already in the archive.',
-      saveFailed:'Could not save:'
+      saveFailed:'Could not save:',
+      sessionExpired:'Session expired. Reload the page to sign in again.'
     }
   };
 
@@ -571,8 +573,21 @@
     var res = await fetch(path, {
       method:method,
       headers: body ? { 'Content-Type':'application/json' } : {},
-      body: body ? JSON.stringify(body) : undefined
+      body: body ? JSON.stringify(body) : undefined,
+      redirect:'manual'
     });
+    // The server never redirects, so a redirect means a login proxy in front of it
+    // (e.g. Authentik) wants a new sign-in. Reload so the browser follows it to the
+    // login page; the guard stops a reload loop if the sign-in keeps failing.
+    if(res.type === 'opaqueredirect'){
+      var last = 0;
+      try{ last = +sessionStorage.getItem('recipebook-relogin') || 0; }catch(e){}
+      if(Date.now() - last > 30000){
+        try{ sessionStorage.setItem('recipebook-relogin', String(Date.now())); }catch(e){}
+        location.reload();
+      }
+      throw new Error(t('sessionExpired'));
+    }
     var data = {};
     try{ data = await res.json(); }catch(e){}
     if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
