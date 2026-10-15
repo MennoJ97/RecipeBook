@@ -19,9 +19,11 @@ python server.py
 
 Then open http://localhost:8080. The server needs Python 3.10+ and nothing else.
 
-The recipe archive itself is `data/recipes.json` and is committed in this repo, so it starts
-with the ~100 recipes collected so far. The server rewrites that file whenever a recipe is
-added, edited or liked; commit it now and then to keep a history.
+A fresh clone starts with an empty recipe book. The recipes are kept in `data/recipes.json`,
+which the server creates on the first save and rewrites whenever a recipe is added, edited or
+liked. It is not part of the repo (imported captions are other people's writing), so back it
+up yourself: the server keeps a copy per day in `data/backups/`, and "Download backup" on the
+page exports it too.
 
 To use it from a phone on the same Wi-Fi, listen on all interfaces and set a password:
 
@@ -118,7 +120,7 @@ Without it, opening a recipe in Dutch offers "Automatisch vertalen" for that one
 | `backfill.py` | Translates existing recipes into a newly added language |
 | `static/index.html` | The page |
 | `static/manifest.webmanifest`, `static/sw.js`, `static/icons/` | What makes the page installable and work offline |
-| `data/recipes.json` | All recipes. A copy is kept per day in `data/backups/`; "Download backup" on the page exports it too |
+| `data/recipes.json` | All recipes (created by the server, not committed). A copy is kept per day in `data/backups/` |
 
 ## Limits
 
