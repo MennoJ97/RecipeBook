@@ -2,8 +2,17 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f3efe6">
+<!-- Installable app. The manifest needs the login cookie, or a login proxy in front of the server redirects it away. -->
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Çok Lekker">
+<!-- The page background shows behind the iPhone status bar; the safe-area padding below keeps content clear of it. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
   // Pick the theme before first paint: a saved choice wins, otherwise follow the device.
   (function(){
@@ -13,9 +22,9 @@
   })();
 </script>
 <title>Çok Lekker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link crossorigin href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
   :root{
     /* Delft × İznik: glazed-white page, cobalt ink, İznik red/turquoise/saffron */
@@ -108,7 +117,13 @@
   :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .hidden{ display:none !important; }
 
-  .wrap{ max-width:1080px; margin:0 auto; padding:32px 20px 100px; }
+  /* env(safe-area-inset-*) is 0 except around an iPhone notch and home indicator (viewport-fit=cover). */
+  .wrap{
+    max-width:1080px; margin:0 auto;
+    padding:calc(32px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  }
+  /* Opened from the home screen: no way back to the parent site from inside the app. */
+  @media (display-mode: standalone){ .home-link{ display:none; } }
 
   .site-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; margin-bottom:22px; }
   .home-link{ display:inline-block; font-family:var(--font-m); font-size:12px; letter-spacing:0.04em; color:var(--accent); text-decoration:none; margin:0 0 14px; }
@@ -274,8 +289,8 @@
   .icon-btn:hover{ background:rgba(var(--ink-rgb),0.08); }
 
   .fab{
-    position:fixed; right:24px; bottom:24px; background:var(--accent); color:var(--on-accent);
-    border:none; padding:14px 22px; border-radius:30px; font-weight:700; font-size:14px;
+    position:fixed; right:calc(24px + env(safe-area-inset-right)); bottom:calc(24px + env(safe-area-inset-bottom));
+    background:var(--accent); color:var(--on-accent); border:none; padding:14px 22px; border-radius:30px; font-weight:700; font-size:14px;
     box-shadow:0 8px 22px rgba(var(--shadow-rgb),0.3); cursor:pointer; transition:transform .12s, background .15s;
     z-index:20;
   }
@@ -287,7 +302,8 @@
 
   .modal-overlay{
     position:fixed; inset:0; background:var(--overlay); display:flex; align-items:center;
-    justify-content:center; padding:20px; z-index:50;
+    justify-content:center; z-index:50;
+    padding:max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   }
   .modal{
     background:var(--card); border-radius:12px; padding:26px; width:100%; max-width:560px;
@@ -354,22 +370,22 @@
   .embed-wrap iframe{ width:100%; height:620px; border:0; display:block; }
 
   .toast{
-    position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink);
+    position:fixed; bottom:calc(24px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--ink);
     color:var(--paper); padding:10px 18px; border-radius:20px; font-size:13px; z-index:60;
     box-shadow:0 8px 20px rgba(var(--shadow-rgb),0.3); max-width:90vw; text-align:center;
   }
 
   @media (max-width:640px){
-    .wrap{ padding:24px 16px 100px; }
+    .wrap{ padding-top:calc(24px + env(safe-area-inset-top)); padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)); }
     .site-header{ flex-direction:column; }
     .board{ padding:16px; }
     .tag-filter{ flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin; }
     .chip{ flex-shrink:0; }
-    .fab{ right:16px; bottom:16px; padding:12px 18px; font-size:13px; }
+    .fab{ right:calc(16px + env(safe-area-inset-right)); bottom:calc(16px + env(safe-area-inset-bottom)); padding:12px 18px; font-size:13px; }
     .field-row{ flex-direction:column; gap:0; }
     .field-row .field.field-narrow{ flex:none; }
     .modal{ padding:20px 16px; }
-    .modal-overlay{ padding:10px; }
+    .modal-overlay{ padding:max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
     .embed-wrap iframe{ height:520px; }
   }
   @media (prefers-reduced-motion:reduce){
@@ -619,7 +635,8 @@
       importDone:'Tarif eklendi', importInbox:'Tarif tezgâha bırakıldı; başlığını ve kategorisini kontrol et.',
       importDuplicate:'Bu tarif zaten arşivde.',
       saveFailed:'Kaydedilemedi:',
-      sessionExpired:'Oturum sona erdi. Yeniden giriş için sayfayı yenile.'
+      sessionExpired:'Oturum sona erdi. Yeniden giriş için sayfayı yenile.',
+      offline:'Bağlantı yok: son kaydedilen tarifler gösteriliyor. Değişiklikler kaydedilemez.'
     },
     en:{
       titleSub:'Kitchen Archive',
@@ -680,7 +697,8 @@
       importDone:'Recipe added', importInbox:'Recipe left on the counter; check its title and category.',
       importDuplicate:'This recipe is already in the archive.',
       saveFailed:'Could not save:',
-      sessionExpired:'Session expired. Reload the page to sign in again.'
+      sessionExpired:'Session expired. Reload the page to sign in again.',
+      offline:'Offline: showing the recipes from your last visit. Changes can’t be saved.'
     },
     nl:{
       titleSub:'Keukenarchief',
@@ -741,7 +759,8 @@
       importDone:'Recept toegevoegd', importInbox:'Recept op het aanrecht gezet; controleer de titel en categorie.',
       importDuplicate:'Dit recept staat al in het archief.',
       saveFailed:'Opslaan mislukt:',
-      sessionExpired:'Sessie verlopen. Herlaad de pagina om opnieuw in te loggen.'
+      sessionExpired:'Sessie verlopen. Herlaad de pagina om opnieuw in te loggen.',
+      offline:'Offline: je ziet de recepten van je vorige bezoek. Wijzigingen kunnen niet worden opgeslagen.'
     }
   };
 
@@ -806,6 +825,8 @@
       }
       throw new Error(t('sessionExpired'));
     }
+    // The service worker answered with its saved copy because the network is gone.
+    if(res.headers.get('X-Offline')) state.offline = true;
     var data = {};
     try{ data = await res.json(); }catch(e){}
     if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
@@ -892,12 +913,12 @@
   var currentIdeaId = null;
   var detailId = null, detailView = null;
 
-  function showToast(msg){
+  function showToast(msg, ms){
     var el = document.getElementById('toast');
     el.textContent = msg;
     el.classList.remove('hidden');
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(function(){ el.classList.add('hidden'); }, 2200);
+    showToast._t = setTimeout(function(){ el.classList.add('hidden'); }, ms || 2200);
   }
 
   function openLabel(r){
@@ -1703,6 +1724,24 @@
     });
   }
 
+  // Android's share sheet opens /?title=…&text=…&url=… (share_target in the manifest).
+  // Apps put the link in different fields (Instagram uses text), so take the first link anywhere.
+  // Only fill the form: any site can link here with these parameters, so importing waits for a tap.
+  function handleShare(){
+    var q = new URLSearchParams(location.search);
+    if(!q.has('url') && !q.has('text') && !q.has('title')) return;
+    history.replaceState(null, '', location.pathname);  // a reload must not import again
+    var shared = [q.get('url'), q.get('text'), q.get('title')].join(' ');
+    var link = (shared.match(/https?:\/\/[^\s"'<>]+/) || [])[0];
+    if(link){
+      document.getElementById('importInput').value = link;
+      document.getElementById('importSubmit').focus();
+    }else if((q.get('text') || '').trim()){
+      document.getElementById('pasteText').value = q.get('text').trim();
+      showPasteBox(true);
+    }
+  }
+
   async function init(){
     state.lang = loadLang() || 'tr';
     if(!I18N[state.lang]) state.lang = 'tr';
@@ -1717,6 +1756,14 @@
       return;
     }
     renderAll();
+    if(state.offline) showToast(t('offline'), 6000);
+    else handleShare();
+  }
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('/sw.js').catch(function(){});
+    });
   }
 
   init();

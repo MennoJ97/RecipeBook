@@ -40,6 +40,20 @@ docker build -t recipebook .
 docker run -d -p 8080:8080 -v ./data:/data -e RECIPEBOOK_PASSWORD=choose-something recipebook
 ```
 
+## On the home screen
+
+Çok Lekker installs as an app (a progressive web app) once it is served over HTTPS:
+
+- **Android (Chrome):** menu ⋮ → *Install app* (or *Add to Home screen*). The installed app
+  also appears in the share sheet: share a reel or post from Instagram, TikTok or YouTube to
+  *Çok Lekker* and the link is filled in, ready to import with one tap.
+- **iPhone (Safari):** Share → *Add to Home Screen*. iOS has no share target for web apps, so
+  copy the link and paste it as usual. A home-screen app keeps its own cookies, so behind a
+  login proxy you sign in once more inside the app.
+
+The app opens without a connection too, showing the recipes from the last visit (read-only).
+`static/sw.js` does that; bump its `VERSION` when changing what it caches.
+
 ## Better imports with a language model (optional)
 
 Without one, an imported caption is machine-translated (Google Translate's free endpoint,
@@ -103,6 +117,7 @@ Without it, opening a recipe in Dutch offers "Automatisch vertalen" for that one
 | `processing.py` | Turns that text into a Turkish/English/Dutch recipe (Claude, Gemini or another model, or translation fallback) |
 | `backfill.py` | Translates existing recipes into a newly added language |
 | `static/index.html` | The page |
+| `static/manifest.webmanifest`, `static/sw.js`, `static/icons/` | What makes the page installable and work offline |
 | `data/recipes.json` | All recipes. A copy is kept per day in `data/backups/`; "Download backup" on the page exports it too |
 
 ## Limits
