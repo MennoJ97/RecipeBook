@@ -156,6 +156,7 @@
   .theme-toggle:hover{ background:rgba(var(--on-bg-rgb),0.07); }
   .liked-filter{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--on-bg); cursor:pointer; user-select:none; }
   .liked-filter input{ accent-color:var(--like); width:16px; height:16px; cursor:pointer; }
+  .liked-filter.text-filter input{ accent-color:var(--badge-text-fg); }
 
   .import-bar{ display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
   .import-input{
@@ -412,6 +413,7 @@
     </div>
     <div class="controls">
       <label class="liked-filter"><input type="checkbox" id="likedOnly"> <span id="likedOnlyLabel"></span></label>
+      <label class="liked-filter text-filter"><input type="checkbox" id="textOnly"> <span id="textOnlyLabel"></span></label>
       <button type="button" class="theme-toggle" id="themeToggle"></button>
       <div class="lang-toggle" id="langToggle" role="group" aria-label="Dil / Language / Taal">
         <button type="button" data-lang="tr">TR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="nl">NL</button>
@@ -608,6 +610,7 @@
       emptyMsg:'Bu tencere henüz boş. Aşağıdan tarif ekleyebilirsin.',
       emptyBtn:'İlk tarifi ekle',
       emptyLiked:'Favori işaretlediğin tarif yok.',
+      emptyFiltered:'Bu seçime uyan tarif yok.',
       inboxInfo:'Tezgâhta bekleyen, henüz dosyalanmamış tarifler. Bir karta tıkla, tarifi kontrol et, sonra Düzenle ile başlığını ve kategorisini seç. Açıklaması okunamayan gönderilerde "Gönderiyi göster" ile metni kopyalayıp "Orijinal açıklama" alanına yapıştırabilirsin.',
       allTags:'Tümü',
       lblTitleTr:'Başlık (TR)', lblTitleEn:'Başlık (EN)', lblTitleNl:'Başlık (NL)', lblCategory:'Kategori', lblTags:'Etiketler',
@@ -670,6 +673,7 @@
       emptyMsg:'This pot is still empty. Add a recipe below.',
       emptyBtn:'Add first recipe',
       emptyLiked:'No favorites marked yet.',
+      emptyFiltered:'No recipes match this selection.',
       inboxInfo:'Recipes waiting on the counter, not filed yet. Open a card, check the recipe, then use Edit to pick a title and category. For posts whose caption could not be read, use "Show post", copy the text and paste it into "Original caption".',
       allTags:'All',
       lblTitleTr:'Title (TR)', lblTitleEn:'Title (EN)', lblTitleNl:'Title (NL)', lblCategory:'Category', lblTags:'Tags',
@@ -732,6 +736,7 @@
       emptyMsg:'Deze pan is nog leeg. Voeg hieronder een recept toe.',
       emptyBtn:'Eerste recept toevoegen',
       emptyLiked:'Nog geen favorieten gemarkeerd.',
+      emptyFiltered:'Geen recepten die hierbij passen.',
       inboxInfo:'Recepten die op het aanrecht wachten en nog niet zijn ingedeeld. Open een kaart, controleer het recept en kies dan met Bewerken een titel en categorie. Kon het bijschrift van een bericht niet gelezen worden, gebruik dan "Bericht tonen", kopieer de tekst en plak die in "Oorspronkelijk bijschrift".',
       allTags:'Alle',
       lblTitleTr:'Titel (TR)', lblTitleEn:'Titel (EN)', lblTitleNl:'Titel (NL)', lblCategory:'Categorie', lblTags:'Labels',
@@ -916,7 +921,7 @@
 
   /* ---------- state & helpers ---------- */
 
-  var state = { lang:'tr', likedOnly:false, search:'', activeCategory:'dinner', activeTag:null, recipes:[], ai:false, editingId:null };
+  var state = { lang:'tr', likedOnly:false, textOnly:false, search:'', activeCategory:'dinner', activeTag:null, recipes:[], ai:false, editingId:null };
   var currentIdeaId = null;
   var detailId = null, detailView = null;
 
@@ -936,6 +941,9 @@
   }
 
   function getRecipe(id){ return state.recipes.filter(function(r){return r.id===id;})[0]; }
+
+  // Whether there is a recipe to read: the original caption or a text in any language.
+  function hasRecipeText(r){ return !!(r.caption || pick(r, 'text')); }
 
   function titles(r){
     var primary = pick(r, 'title');
@@ -959,6 +967,7 @@
     return state.recipes.filter(function(r){
       if(r.category !== state.activeCategory) return false;
       if(state.likedOnly && !r.liked) return false;
+      if(state.textOnly && !hasRecipeText(r)) return false;
       if(state.activeTag && (r.tags||[]).indexOf(state.activeTag) === -1) return false;
       if(q && haystack(r).indexOf(q) === -1) return false;
       return true;
@@ -978,6 +987,7 @@
     document.getElementById('pageSubtitle').textContent = t('subtitle');
     document.getElementById('searchInput').placeholder = t('searchPlaceholder');
     document.getElementById('likedOnlyLabel').textContent = '♥ ' + t('likedOnly');
+    document.getElementById('textOnlyLabel').textContent = '📄 ' + t('hasText');
     applyTheme(currentTheme());
     document.getElementById('ideaBtn').textContent = '🎲 ' + t('idea');
     document.getElementById('addBtnLabel').textContent = t('addByHand');
@@ -1068,7 +1078,7 @@
     var primaryNote = pick(r, 'note');
     var secondaryNote = r['note' + cap(SECONDARY[state.lang])] || '';
     if(secondaryNote === primaryNote) secondaryNote = '';
-    var hasText = !!(r.caption || pick(r, 'text'));
+    var hasText = hasRecipeText(r);
 
     var html = '<div class="card" data-cat="' + esc(r.category) + '" data-id="' + esc(r.id) + '">';
     html += '<div class="accent-bar"></div>';
@@ -1096,9 +1106,10 @@
     var grid = document.getElementById('grid');
     var list = filteredRecipes();
     if(list.length === 0){
-      var msg = state.likedOnly ? t('emptyLiked') : t('emptyMsg');
+      var filtered = state.likedOnly || state.textOnly;
+      var msg = state.textOnly ? t('emptyFiltered') : state.likedOnly ? t('emptyLiked') : t('emptyMsg');
       grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>' + esc(msg) + '</p>' +
-        (state.likedOnly || state.activeCategory==='inbox' ? '' : '<button id="emptyAddBtn">' + esc(t('emptyBtn')) + '</button>') + '</div>';
+        (filtered || state.activeCategory==='inbox' ? '' : '<button id="emptyAddBtn">' + esc(t('emptyBtn')) + '</button>') + '</div>';
       var eb = document.getElementById('emptyAddBtn');
       if(eb) eb.addEventListener('click', function(){ openModal(null); });
       return;
@@ -1578,7 +1589,8 @@
       return named(r) && r.id !== currentIdeaId &&
         (state.activeCategory === 'inbox' || r.category === state.activeCategory) &&
         (!state.activeTag || (r.tags||[]).indexOf(state.activeTag) !== -1) &&
-        (!state.likedOnly || r.liked);
+        (!state.likedOnly || r.liked) &&
+        (!state.textOnly || hasRecipeText(r));
     });
     if(pool.length === 0) pool = state.recipes.filter(function(r){ return named(r) && r.id !== currentIdeaId; });
     if(pool.length === 0) return null;
@@ -1696,6 +1708,10 @@
     });
     document.getElementById('likedOnly').addEventListener('change', function(e){
       state.likedOnly = e.target.checked;
+      renderGrid();
+    });
+    document.getElementById('textOnly').addEventListener('change', function(e){
+      state.textOnly = e.target.checked;
       renderGrid();
     });
     document.getElementById('searchInput').addEventListener('input', function(e){
