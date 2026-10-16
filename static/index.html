@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#f3efe6">
 <!-- Installable app. The manifest needs the login cookie, or a login proxy in front of the server redirects it away. -->
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -129,6 +130,9 @@
   .home-link{ display:inline-block; font-family:var(--font-m); font-size:12px; letter-spacing:0.04em; color:var(--accent); text-decoration:none; margin:0 0 14px; }
   .home-link:hover{ text-decoration:underline; text-underline-offset:3px; }
   .eyebrow{ font-family:var(--font-m); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--on-bg-soft); margin:0 0 6px; }
+  /* The tea glass from the app icon, beside the name; the name itself is redrawn per language. */
+  .brand{ display:flex; align-items:flex-start; gap:clamp(10px,1.4vw,14px); }
+  .brand-mark{ flex:none; width:clamp(30px,4.2vw,44px); height:auto; margin-top:1px; }
   h1{ font-family:var(--font-d); font-weight:600; font-size:clamp(28px,4vw,42px); margin:0 0 6px; line-height:1.05; }
   h1 .en{ display:block; font-size:0.5em; font-weight:400; font-style:italic; color:var(--on-bg-soft); margin-top:4px; }
   .subtitle{ font-size:14px; color:var(--on-bg-soft); max-width:44ch; margin:0; line-height:1.5; }
@@ -400,7 +404,10 @@
     <div>
       <a class="home-link" href="https://mhjansen.nl">← mhjansen.nl</a>
       <p class="eyebrow"><span lang="tr">Afiyet olsun</span> · <span lang="nl">Eet smakelijk</span> · <span lang="en">Enjoy your meal</span></p>
-      <h1 id="pageTitle"><span>Çok Lekker</span></h1>
+      <div class="brand">
+        <img class="brand-mark" src="/icons/favicon.svg" alt="" width="44" height="44">
+        <h1 id="pageTitle"><span>Çok Lekker</span></h1>
+      </div>
       <p class="subtitle" id="pageSubtitle"></p>
     </div>
     <div class="controls">

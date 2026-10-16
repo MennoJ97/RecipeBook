@@ -8,7 +8,7 @@
 var VERSION = 'v1';
 var CACHE = 'coklekker-' + VERSION;
 var FONTS = 'coklekker-fonts';
-var SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
+var SHELL = ['/', '/manifest.webmanifest', '/icons/favicon.svg', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', function(event){
   // Best effort: if the session has expired, these fail and the first online visit fills them.

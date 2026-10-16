@@ -29,6 +29,7 @@ PAGE = STATIC / "index.html"
 # What the installable app needs next to the page: manifest, service worker, icons.
 ASSETS = {"/manifest.webmanifest": "application/manifest+json", "/sw.js": "text/javascript; charset=utf-8"}
 ASSETS |= {f"/icons/{p.name}": "image/png" for p in (STATIC / "icons").glob("*.png")}
+ASSETS |= {f"/icons/{p.name}": "image/svg+xml" for p in (STATIC / "icons").glob("*.svg")}
 DATA_DIR = Path(os.environ.get("RECIPEBOOK_DATA", ROOT / "data"))
 DB_FILE = DATA_DIR / "recipes.json"
 BACKUP_DIR = DATA_DIR / "backups"
